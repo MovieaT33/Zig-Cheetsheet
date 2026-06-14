@@ -190,6 +190,7 @@ pub fn main() !void {
     // region operators:optional
     {
         const x: ?u8 = 42;
+
         _ = x == null;
         _ = x != null;
         _ = x.?;
@@ -200,6 +201,7 @@ pub fn main() !void {
     // region operators:catch
     {
         const x: anyerror!u8 = 0;
+
         _ = x catch unreachable;
         _ = x catch |err| return err;
     }
