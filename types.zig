@@ -398,4 +398,4 @@ fn inspect(comptime T: type) void {
 }
 // endregion
 
-// TODO: anonymous / noreturn /return / циклічні / comptime x =
+// TODO: anonymous / noreturn /return / циклічні / comptime x = / atomic / pub/priv

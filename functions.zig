@@ -1,1 +1,1 @@
-// declaration / recursion / extern / pub/priv
+// declaration / recursion / extern / pub/priv / inline

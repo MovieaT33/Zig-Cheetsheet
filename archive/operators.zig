@@ -137,12 +137,11 @@ pub fn main() !void {
 
     // region operators:indexing
     {
-        var a = [_]u8{ 1, 2 };
-        a[0] = a[1];
+        var array = [_]u8{ 1, 2, 3, 4 };
+        array[0] = array[1];
 
-        var b = [_]u8{ 3, 4, 5, 6 };
-        const c = b[1..3];
-        c[0] = c[1];
+        const slice = array[1..3];
+        slice[0] = slice[1];
     }
     // endregion
 
@@ -160,24 +159,27 @@ pub fn main() !void {
 
     // region operators:vector
     {
-        const Vec2 = @Vector(2, u8);
         const a = @Vector(2, u8){ 3, 4 };
-        const b: Vec2 = .{ 1, 2 };
+        const b = @Vector(2, u8){ 1, 2 };
 
+        // arithmetic
         _ = a + b;
         _ = a - b;
         _ = a * b;
         _ = a / b;
         _ = a % b;
 
+        // saturation
         _ = a +| b;
         _ = a -| b;
         _ = a *| b;
 
+        // wrapping
         _ = a +% b;
         _ = a -% b;
         _ = a *% b;
 
+        // comparison
         _ = a == b;
         _ = a != b;
         _ = a < b;
@@ -198,25 +200,25 @@ pub fn main() !void {
     }
     // endregion
 
+    // region operators:struct
+    {
+        const Struct = struct {
+            x: u8,
+            fn action() void {}
+        };
+
+        const instance = Struct{ .x = 10 };
+        _ = instance.x;
+        Struct.action();
+    }
+    // endregion
+
     // region operators:catch
     {
         const x: anyerror!u8 = 0;
 
         _ = x catch unreachable;
         _ = x catch |err| return err;
-    }
-    // endregion
-
-    // region operators:struct
-    {
-        const LocalStruct = struct {
-            x: u8,
-            fn action() void {}
-        };
-
-        const instance = LocalStruct{ .x = 10 };
-        _ = instance.x;
-        LocalStruct.action();
     }
     // endregion
 
@@ -227,8 +229,7 @@ pub fn main() !void {
 
         const a = error{One};
         const b = error{Two};
-        const c = a || b;
-        _ = c;
+        _ = a || b;
     }
     // endregion
 

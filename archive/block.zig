@@ -3,22 +3,43 @@ const std = @import("std");
 pub fn main() !void {
     // region block:if
     {
-        _ = if (true) 1 else 0;
+        // 1
+        _ = if (true) true else false;
 
+        // 2
+        const a = 5;
+        const b = 10;
+        _ = if (a > b) {
+            const c = a;
+            c;
+        } else if (a == 20)
+            30
+        else if (a < b)
+            b
+        else
+            0;
+
+        // 3
         var optional_value: ?u8 = 5;
-        if (optional_value) |*value|
-            value.* = 10;
+        if (optional_value) |*value| {
+            if (value.* > 0)
+                value.* -= 1;
+        }
 
-        const error_union: anyerror!u8 = 15;
+        _ = if (optional_value) |value| value else 0;
+
+        // 4
+        const error_union: anyerror!u8 = 5;
         if (error_union) |success_value| {
             _ = success_value;
         } else |err| _ = err;
 
+        // 5
         _ = blk: {
             if (false) {
-                break :blk @as(i32, 20);
+                break :blk @as(u8, 5);
             } else {
-                break :blk @as(i32, 25);
+                break :blk @as(u8, 10);
             }
         };
     }
@@ -26,54 +47,122 @@ pub fn main() !void {
 
     // region block:while
     {
+        // 1
+        while (false) {
+            break;
+        }
+
+        // 2
         var i: u8 = 0;
         while (i < 5) : (i += 1) {
             if (i == 2) continue;
             if (i == 4) break;
         }
 
+        // 3
         var iterator_source: ?u8 = 5;
-        while (iterator_source) |value| {
-            _ = value;
-            iterator_source = null;
+        while (iterator_source) |*value| {
+            if (value.* == 0) break;
+            // value.* = null; // XXX: expected type 'u8', found '@TypeOf(null)'
+            value.* -= 1;
         }
 
+        // 4
         var optional_value: ?u8 = 10;
         while (optional_value) |value| : (optional_value = if (value > 1) value - 1 else null)
             continue;
 
+        // 5
         var count: u8 = 0;
         _ = blk: while (count < 15) : (count += 1) {
             if (count == 5) break :blk @as(u8, 20);
         } else @as(u8, 25);
+
+        // 6
+        var error_source: anyerror!u8 = 10;
+        while (error_source) |value| {
+            _ = value;
+            error_source = error.SomeError;
+        } else |err| {
+            std.debug.print("error: {}\n", .{err});
+        }
+
+        // 7
+        comptime var inline_i = 0;
+        inline while (inline_i < 3) : (inline_i += 1) {
+            continue;
+        }
     }
     // endregion
 
     // region block:for
     {
+        // 1
         for (0..10) |i|
             _ = i;
 
-        const items = [_]u8{ 10, 20, 30 };
+        // 2
+        const items = [_]u8{ 1, 2, 3 };
 
         for (items, 0..) |item, index| {
             _ = item;
             _ = index;
         }
 
+        // 3
         var mutable_items = [_]u8{ 1, 2, 3 };
         for (&mutable_items) |*item| {
             item.* *= 2;
         }
 
+        // 4
         _ = blk: for (items) |item| {
             if (item == 20) break :blk true;
         } else false;
-    }
-    // endregion
 
-    // region block:for:inline
-    {
+        // 5
+        const User = struct { id: u32, active: bool };
+        var users = [_]User{
+            .{ .id = 1, .active = true },
+            .{ .id = 2, .active = false },
+        };
+
+        for (&users) |*user| {
+            if (!user.active)
+                user.active = true;
+        }
+
+        // 6
+        const maybe_numbers = [_]?u8{ 10, null, 30 };
+        for (maybe_numbers) |maybe_num| {
+            if (maybe_num) |num|
+                _ = num;
+        }
+
+        // 7
+        const ResultError = error{ Overflow, InvalidData };
+        const results = [_]ResultError!u8{ 5, ResultError.Overflow, 25 };
+
+        for (results) |res| {
+            const value = res catch 0;
+            _ = value;
+
+            if (res) |success_value| {
+                _ = success_value;
+            } else |err| {
+                std.debug.print("error: {}\n", .{err});
+            }
+        }
+
+        // 8
+        const ids = [_]u8{ 101, 102, 103 };
+        const scores = [_]u8{ 85, 92, 78 };
+        for (ids, scores) |id, score| {
+            _ = id;
+            _ = score;
+        }
+
+        // 9
         const types = .{ i32, f64, bool };
 
         inline for (types) |T| {
