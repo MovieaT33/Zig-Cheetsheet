@@ -98,8 +98,8 @@ pub fn main() !void {
     // region block:for
     {
         // 1
-        for (0..10) |i|
-            _ = i;
+        for (0..10) |_|
+            continue;
 
         // 2
         const items = [_]u8{ 1, 2, 3 };
