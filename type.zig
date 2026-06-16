@@ -398,20 +398,32 @@ fn inspect(comptime T: type) void {
 }
 // endregion
 
-// TODO: anonymous / noreturn /return / циклічні / comptime x = / atomic / pub/priv / function / `\\`
+// TODO
+// comptime x =
+// atomic
+// pub
+// function type
+// `\\`
 // anyopaque
+// noreturn
+// anonymous
+// return
+// allowzero
 // escape sequences
-//     const tuple = .{ 1, 2, 3 };
-//
-//     x, var y : u32, const z = tuple;
-//
-//     print("x = {}, y = {}, z = {}\n", .{x, y, z});
-//
-//     // y is mutable
-//     y = 100;
-//
-//     // You can use _ to throw away unwanted values.
-//     _, x, _ = tuple;
+// циклічні - ?
+// const tuple = .{ 1, 2, 3 };
+// x, var y : u32, const z = tuple;
+// _, x, _ = tuple;
 // 1.23e-4
 // 0x1.aP1
 // threadlocal
+// addrspace
+// anyframe
+// callconv
+// linksection
+// noalias
+// noinline
+// nosuspend
+// opaque
+// suspend
+// resume
