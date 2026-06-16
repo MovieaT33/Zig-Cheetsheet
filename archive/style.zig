@@ -1,12 +1,17 @@
+// region style:contents
+// [1] style:module
+// [2] style:type:generic
+// [3] style:type:struct
+// [4] style:type:error
+// [5] style:value:function
+// [6] style:value:variable
+// endregion
+
 // region style:module
 const standard_library = @import("std");
 // endregion
 
-// region style:function
-fn sendRequest() void {}
-// endregion
-
-// region style:generic
+// region style:type:generic
 fn Box(comptime T: type) type {
     return struct {
         value: T,
@@ -14,26 +19,28 @@ fn Box(comptime T: type) type {
 }
 
 const IntBox = Box(u8);
+const FloatBox = Box(f16);
+// endregion
+
+// region style:type:struct
+const HttpClient = struct {
+    ip: [4]u8,
+    port: u16,
+};
+// endregion
+
+// region style:type:error
+const FileError = error{
+    FileNotFound,
+    AccessDenied,
+};
+// endregion
+
+// region style:value:function
+fn sendRequest() void {}
 // endregion
 
 pub fn main() void {
-    // region style:struct
-    {
-        const HttpClient = struct {
-            ip: [4]u8,
-            port: u16,
-        };
-
-        _ = HttpClient{ .ip = .{ 8, 8, 8, 8 }, .port = 443 };
-    }
-    // endregion
-
-    // region style:function
-    {
-        sendRequest();
-    }
-    // endregion
-
     // region style:variable
     {
         var user_count: u8 = 0;
@@ -44,13 +51,5 @@ pub fn main() void {
     }
     // endregion
 
-    // region style:error
-    {
-        const FileNotFound = error.FileNotFound;
-
-        standard_library.debug.print("error: {}\n", .{FileNotFound});
-    }
-    // endregion
-
-    standard_library.debug.print("exit successfully\n", .{});
+    standard_library.log.info("exit successfully: style", .{});
 }

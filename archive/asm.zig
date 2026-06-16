@@ -1,20 +1,46 @@
+// region asm:contents
+// [1] asm:nop
+// [2] asm:addb
+// [3] asm:inc
+// endregion
+
 const std = @import("std");
 
-pub fn main() void {
-    // region asm
+pub fn main() !void {
+    // region asm:nop
     {
         asm volatile ("nop");
-
-        const a: u32 = 10;
-        const b: u32 = 20;
-        _ = asm (
-            \\ add %[out], %[src1], %[src2]
-            : [out] "=r" (-> u32),
-            : [src1] "r" (a),
-              [src2] "r" (b),
-        );
     }
     // endregion
 
-    std.debug.print("exit successfully\n", .{});
+    // region asm:addb
+    {
+        const a: u8 = 5;
+        const b: u8 = 10;
+
+        const c = asm (
+            \\ addb %[src2], %[out]
+            : [out] "=q" (-> u8),
+            : [src1] "0" (a),
+              [src2] "q" (b),
+        );
+
+        std.log.debug("c = {}", .{c});
+    }
+    // endregion
+
+    // region asm:inc
+    {
+        var x: u8 = 5;
+
+        asm volatile (
+            \\ inc %[data]
+            : [data] "+q" (x),
+        );
+
+        std.log.debug("x = {}", .{x});
+    }
+    // endregion
+
+    std.log.info("exit successfully: asm", .{});
 }

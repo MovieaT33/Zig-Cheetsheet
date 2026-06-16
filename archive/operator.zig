@@ -1,27 +1,28 @@
+// region operator:contents
+// [1]  operator:value:bool
+// [2]  operator:value:scalar:arithmetic
+// [3]  operator:value:scalar:saturation
+// [4]  operator:value:scalar:wrapping
+// [5]  operator:value:scalar:bitwise
+// [6]  operator:value:scalar:assignment:arithmetic
+// [7]  operator:value:scalar:assignment:saturation
+// [8]  operator:value:scalar:assignment:wrapping
+// [9]  operator:value:scalar:assignment:bitwise
+// [10] operator:value:scalar:comparison
+// [11] operator:value:sequence:indexing
+// [12] operator:value:sequence:array
+// [13] operator:value:sequence:vector
+// [14] operator:type:struct
+// [15] operator:type:enum
+// [16] operator:type:error
+// [17] operator:modifier:optional
+// [18] operator:modifier:pointer
+// endregion
+
 const std = @import("std");
 
 pub fn main() !void {
-    // region operator
-    // [1]  operator:bool
-    // [2]  operator:scalar:arithmetic
-    // [3]  operator:scalar:saturation
-    // [4]  operator:scalar:wrapping
-    // [5]  operator:scalar:bitwise
-    // [6]  operator:scalar:assignment:arithmetic
-    // [7]  operator:scalar:assignment:saturation
-    // [8]  operator:scalar:assignment:wrapping
-    // [9]  operator:scalar:assignment:bitwise
-    // [10] operator:scalar:comparison
-    // [11] operator:sequence:indexing
-    // [12] operator:sequence:array
-    // [13] operator:sequence:vector
-    // [14] operator:composite:struct
-    // [15] operator:modifier:optional
-    // [16] operator:modifier:pointer
-    // [17] operator:error
-    // endregion
-
-    // region operator:bool
+    // region operator:value:bool
     {
         const a = true;
         const b = false;
@@ -34,7 +35,7 @@ pub fn main() !void {
     }
     // endregion
 
-    // region operator:scalar:arithmetic
+    // region operator:value:scalar:arithmetic
     {
         const a = 5;
         const b = 10;
@@ -49,7 +50,7 @@ pub fn main() !void {
     }
     // endregion
 
-    // region operator:scalar:saturation
+    // region operator:value:scalar:saturation
     {
         const a: u8 = 250;
         const b = 10;
@@ -61,7 +62,7 @@ pub fn main() !void {
     }
     // endregion
 
-    // region operator:scalar:wrapping
+    // region operator:value:scalar:wrapping
     {
         const x: u8 = 254;
 
@@ -72,7 +73,7 @@ pub fn main() !void {
     }
     // endregion
 
-    // region operator:scalar:bitwise
+    // region operator:value:scalar:bitwise
     {
         const a: u8 = 0b1010_1010;
         const b = 0b1100_1100;
@@ -86,7 +87,7 @@ pub fn main() !void {
     }
     // endregion
 
-    // region operator:scalar:assignment:arithmetic
+    // region operator:value:scalar:assignment:arithmetic
     {
         var x: u8 = 5;
 
@@ -98,7 +99,7 @@ pub fn main() !void {
     }
     // endregion
 
-    // region operator:scalar:assignment:saturation
+    // region operator:value:scalar:assignment:saturation
     {
         var x: u8 = 200;
 
@@ -109,7 +110,7 @@ pub fn main() !void {
     }
     // endregion
 
-    // region operator:scalar:assignment:wrapping
+    // region operator:value:scalar:assignment:wrapping
     {
         var x: u8 = 5;
 
@@ -119,7 +120,7 @@ pub fn main() !void {
     }
     // endregion
 
-    // region operator:scalar:assignment:bitwise
+    // region operator:value:scalar:assignment:bitwise
     {
         var a: u8 = 0b1010_1010;
         const b = 0b1100_1100;
@@ -132,7 +133,7 @@ pub fn main() !void {
     }
     // endregion
 
-    // region operator:scalar:comparison
+    // region operator:value:scalar:comparison
     {
         const a = 5;
         const b = 10;
@@ -146,7 +147,7 @@ pub fn main() !void {
     }
     // endregion
 
-    // region operator:sequence:indexing
+    // region operator:value:sequence:indexing
     {
         var array = [_]u8{ 1, 2, 3, 4 };
         array[0] = array[1];
@@ -156,7 +157,7 @@ pub fn main() !void {
     }
     // endregion
 
-    // region operator:sequence:array
+    // region operator:value:sequence:array
     {
         comptime {
             const a = [_]u8{ 1, 2 };
@@ -168,7 +169,7 @@ pub fn main() !void {
     }
     // endregion
 
-    // region operator:sequence:vector
+    // region operator:value:sequence:vector
     {
         const a = @Vector(2, u8){ 1, 2 };
         const b = @Vector(2, u8){ 3, 4 };
@@ -200,10 +201,11 @@ pub fn main() !void {
     }
     // endregion
 
-    // region operator:composite:struct
+    // region operator:type:struct
     {
         const Struct = struct {
             x: u8,
+
             fn action(self: *const @This(), flag: bool) ?@This() {
                 if (flag) return null;
                 return self.*;
@@ -214,6 +216,34 @@ pub fn main() !void {
         _ = instance.x;
         _ = instance.action(false);
         _ = Struct.action(&instance, false);
+    }
+    // endregion
+
+    // region operator:type:enum
+    {
+        const Color = enum {
+            red,
+            green,
+            blue,
+        };
+
+        const favorite: Color = .red;
+        _ = favorite;
+    }
+    // endregion
+
+    // region operator:type:error
+    {
+        // 1
+        const a: anyerror!u8 = 0;
+
+        _ = a catch unreachable;
+        _ = a catch |err| return err;
+
+        // 2
+        const b = error{One};
+        const c = error{Two};
+        _ = b || c;
     }
     // endregion
 
@@ -239,20 +269,5 @@ pub fn main() !void {
     }
     // endregion
 
-    // region operator:error
-    {
-        // 1
-        const a: anyerror!u8 = 0;
-
-        _ = a catch unreachable;
-        _ = a catch |err| return err;
-
-        // 2
-        const b = error{One};
-        const c = error{Two};
-        _ = b || c;
-    }
-    // endregion
-
-    std.debug.print("exit successfully\n", .{});
+    std.log.info("exit successfully: operator", .{});
 }
