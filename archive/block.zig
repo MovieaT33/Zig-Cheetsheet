@@ -1,6 +1,38 @@
+// region block:contents
+// [1]  block:block
+// [2]  block:if
+// [3]  block:while
+// [4]  block:for
+// [5]  block:switch
+// [6]  block:switch:tagged_union
+// [7]  block:switch:error
+// [8]  block:unreachable
+// [9]  block:defer
+// [10] block:errdefer
+// endregion
+
 const std = @import("std");
+const math = std.math;
 
 pub fn main() !void {
+    // Block can also be an expression!
+
+    // region block:block
+    {
+        const block_value = blk: {
+            const a: u8 = 5;
+            const b: u8 = 10;
+            break :blk a + b;
+        };
+        _ = block_value;
+
+        outer: while (true) {
+            while (true)
+                break :outer;
+        }
+    }
+    // endregion
+
     // region block:if
     {
         // 1
@@ -9,15 +41,17 @@ pub fn main() !void {
         // 2
         const a = 5;
         const b = 10;
-        _ = if (a > b) {
-            const c = a;
-            c;
-        } else if (a == 20)
-            30
-        else if (a < b)
-            b
-        else
-            0;
+        _ = blk: {
+            if (@abs(a - b) > 15) {
+                break :blk a + b;
+            } else if (a > b) {
+                break :blk a;
+            } else if (a < b) {
+                break :blk b;
+            } else {
+                break :blk a;
+            }
+        };
 
         // 3
         var optional_value: ?u8 = 5;
@@ -26,7 +60,10 @@ pub fn main() !void {
                 value.* -= 1;
         }
 
-        _ = if (optional_value) |value| value else 0;
+        _ = if (optional_value) |value|
+            value
+        else
+            0;
 
         // 4
         const error_union: anyerror!u8 = 5;
@@ -84,7 +121,7 @@ pub fn main() !void {
             _ = value;
             error_source = error.SomeError;
         } else |err| {
-            std.debug.print("error: {}\n", .{err});
+            std.log.err("{}", .{err});
         }
 
         // 7
@@ -150,7 +187,7 @@ pub fn main() !void {
             if (res) |success_value| {
                 _ = success_value;
             } else |err| {
-                std.debug.print("error: {}\n", .{err});
+                std.log.err("{}", .{err});
             }
         }
 
@@ -172,27 +209,11 @@ pub fn main() !void {
     }
     // endregion
 
-    // region block:label
-    {
-        const block_value = blk: {
-            const a: u32 = 5;
-            const b: u32 = 10;
-            break :blk a + b;
-        };
-        _ = block_value;
-
-        outer: while (true) {
-            while (true)
-                break :outer;
-        }
-    }
-    // endregion
-
     // region block:switch
     {
         const a: u8 = 2;
+        const b = 10;
 
-        const b: u8 = 10;
         _ = switch (a) {
             0 => @as(u8, 5),
             1, 2 => @as(u8, 10),
@@ -219,7 +240,11 @@ pub fn main() !void {
 
     // region block:switch:tagged_union
     {
-        const Tag = enum { int, float, text };
+        const Tag = enum {
+            int,
+            float,
+            text,
+        };
 
         const Payload = union(Tag) {
             int: i32,
@@ -276,5 +301,32 @@ pub fn main() !void {
     }
     // endregion
 
-    std.debug.print("exit successfully\n", .{});
+    // region block:defer
+    {
+        var defer_check: u8 = 1;
+        {
+            defer defer_check = 2;
+            defer defer_check = 3;
+        }
+
+        std.log.debug("defer_check = {}", .{defer_check}); // 2
+    }
+    // endregion
+
+    // region block:errdefer
+    {
+        const closure = struct {
+            fn run(fail: bool) !void {
+                var clean_flag = false;
+                errdefer clean_flag = true;
+
+                if (fail) return error.ForcedFailure;
+            }
+        };
+
+        closure.run(true) catch {};
+    }
+    // endregion
+
+    std.log.info("exit successfully: block", .{});
 }

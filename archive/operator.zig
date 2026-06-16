@@ -174,6 +174,9 @@ pub fn main() !void {
         const a = @Vector(2, u8){ 1, 2 };
         const b = @Vector(2, u8){ 3, 4 };
 
+        // unpacking
+        _, _ = a;
+
         // arithmetic
         _ = a + b;
         _ = b - a;
@@ -237,6 +240,7 @@ pub fn main() !void {
         // 1
         const a: anyerror!u8 = 0;
 
+        _ = a catch {};
         _ = a catch unreachable;
         _ = a catch |err| return err;
 
