@@ -15,7 +15,7 @@ const std = @import("std");
 const math = std.math;
 
 pub fn main() !void {
-    // Block can also be an expression!
+    // Block can also be an expression
 
     // region block:block
     {

@@ -427,3 +427,6 @@ fn inspect(comptime T: type) void {
 // opaque
 // suspend
 // resume
+// void = {}
+// T {}
+// "string"

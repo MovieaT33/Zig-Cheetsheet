@@ -3,7 +3,7 @@ const math = std.math;
 
 const NetType = f32;
 
-// region [ Activation ]
+// region activation
 const ActivationFunc = *const fn (x: NetType) NetType;
 const ActivationDeriv = *const fn (x: NetType) NetType;
 
@@ -29,7 +29,7 @@ fn sigmoidDeriv(sigmoid_out: NetType) NetType {
 }
 // endregion
 
-// region [ Neural network ]
+// region neural network
 fn randomNetType(rand: std.Random) NetType {
     if (NetType == f128)
         return @as(f128, rand.float(f64));
@@ -218,9 +218,10 @@ const NeuralNetwork = struct {
 };
 // endregion
 
-const EPOCHS = 10_000_000;
-const LEARNING_RATE = 0.001;
+const EPOCHS = 1_000_000;
+const LEARNING_RATE = 0.005;
 
+// region main
 pub fn main() !void {
     var gpa = std.heap.DebugAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -255,10 +256,10 @@ pub fn main() !void {
         &[_]NetType{0.7}, &[_]NetType{0.8}, &[_]NetType{0.9},
     };
 
-    const progress_step = EPOCHS / 100;
+    const progress_step = EPOCHS / 1_000;
     for (0..EPOCHS) |epoch| {
         if (epoch % progress_step == 0)
-            std.debug.print("training progress: \x1b[32m{d:.0}%\x1b[0m\r", .{((@as(f32, @floatFromInt(epoch)) / EPOCHS) * 100.0)});
+            std.debug.print("training progress: \x1b[32m{d:.0}%\x1b[0m loss: {d:.12}\r", .{ ((@as(f32, @floatFromInt(epoch)) / EPOCHS) * 100.0), nn.lossMseDataset(&inputs, &targets) });
 
         for (inputs, 0..) |sample_input, sample_idx| {
             _ = nn.forward(sample_input);
@@ -271,7 +272,7 @@ pub fn main() !void {
     for (inputs, targets) |input, target| {
         const outputs = nn.forward(input);
 
-        std.debug.print("[{d:.1}, {d:.1}] -> [{d:.12}] (exp. [{d:.1}])\n", .{
+        std.debug.print("[{d:.1}, {d:.1}] > [{d:.12}] < [\x1b[38;2;241;250;140m{d:.1}\x1b[0m]\n", .{
             input[0], input[1], outputs[0], target[0],
         });
     }
@@ -279,3 +280,4 @@ pub fn main() !void {
     const final_loss = nn.lossMseDataset(&inputs, &targets);
     std.debug.print("\x1b[1mmse loss\x1b[0m: \x1b[31;1m{d:.12}\x1b[0m\n", .{final_loss});
 }
+// endregion

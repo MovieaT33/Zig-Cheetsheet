@@ -56,7 +56,7 @@ const Counter = struct {
         self.count += 1;
     }
 
-    fn getValue(self: *const Counter) u32 {
+    pub fn getValue(self: *const Counter) u32 {
         return self.count;
     }
 };
