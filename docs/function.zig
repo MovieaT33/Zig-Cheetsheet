@@ -36,6 +36,10 @@ fn fibonacci(n: u32) u32 {
 inline fn multiplyByTwo(value: anytype) @TypeOf(value) {
     return value * 2;
 }
+
+noinline fn multiplyByTwoNoInline(value: anytype) @TypeOf(value) {
+    return value * 2;
+}
 // endregion
 
 // region function:noreturn
