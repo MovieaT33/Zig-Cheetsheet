@@ -1,55 +1,67 @@
-// region style:contents
-// [1] style:module
-// [2] style:type:generic
-// [3] style:type:struct
-// [4] style:type:error
-// [5] style:value:function
-// [6] style:value:variable
-// endregion
+//! Top-level
+//! documentation comment
 
-// region style:module
+// line
+// comment
+
+test "quoted-identifier" {
+    const @"u8": u8 = 0;
+    _ = @"u8";
+}
+
+test "variable & constant" {
+    var user_count: u8 = 0;
+    const buffer_size = 1024;
+
+    user_count += 1;
+    _ = buffer_size;
+}
+
+/// module: (documentation
+///          comment)
 const standard_library = @import("std");
-// endregion
+const Io = @import("std").Io;
 
-// region style:type:generic
-fn Box(comptime T: type) type {
-    return struct {
-        value: T,
+test "type" {
+    // generic:
+    {
+        const Box = struct {
+            fn Box(comptime T: type) type {
+                return struct {
+                    value: T,
+                };
+            }
+        };
+        _ = Box;
+    }
+
+    // error set:
+    {
+        const FileError = error{
+            FileNotFound,
+            AccessDenied,
+        };
+        _ = FileError;
+    }
+
+    // composite:
+    {
+        const Timestamp = struct {
+            /// The number of seconds since the Unix epoch.
+            seconds: u64,
+        };
+        _ = Timestamp;
+    }
+}
+
+test "block" {
+    _ = blk_label: {
+        break :blk_label;
     };
 }
 
-const IntBox = Box(u8);
-const FloatBox = Box(f16);
-// endregion
-
-// region style:type:struct
-const HttpClient = struct {
-    ip: [4]u8,
-    port: u16,
-};
-// endregion
-
-// region style:type:error
-const FileError = error{
-    FileNotFound,
-    AccessDenied,
-};
-// endregion
-
-// region style:value:function
-fn sendRequest() void {}
-// endregion
-
-pub fn main() void {
-    // region style:variable
-    {
-        var user_count: u8 = 0;
-        const buffer_size = 1024;
-
-        user_count += 1;
-        _ = buffer_size;
-    }
-    // endregion
-
-    standard_library.log.info("exit successfully: style", .{});
+test "function" {
+    _ = struct {
+        fn sendRequest() void {}
+    };
 }

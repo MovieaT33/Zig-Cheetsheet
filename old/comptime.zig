@@ -149,3 +149,4 @@ pub fn main() !void {
 
     std.log.info("exit successfully: comptime", .{});
 }
+// comptime 1 + 1

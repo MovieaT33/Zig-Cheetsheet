@@ -11,6 +11,7 @@
 // [10] function:static
 // endregion
 
+// noalias / noinline
 const std = @import("std");
 
 // region function:declaration
@@ -119,3 +120,5 @@ pub fn main() !void {
     std.log.info("exit successfully: function", .{});
 }
 // endregion
+
+// TODO: callconv

@@ -1,9 +1,8 @@
-const std = @import("std");
 const math = std.math;
+const std = @import("std");
 
 const NetType = f32;
 
-// region activation
 const ActivationFunc = *const fn (x: NetType) NetType;
 const ActivationDeriv = *const fn (x: NetType) NetType;
 
@@ -13,30 +12,31 @@ const Activation = struct {
 };
 
 fn reluAct(x: NetType) NetType {
-    return if (x > 0.0) x else 0.0;
+    return if (x > 0) x else 0;
 }
 
 fn reluDeriv(x: NetType) NetType {
-    return if (x > 0.0) 1.0 else 0.0;
+    return if (x > 0) 1 else 0;
 }
 
 fn sigmoidAct(x: NetType) NetType {
-    return 1.0 / (1.0 + math.exp(-x));
+    return 1 / (1 + math.exp(-x));
 }
 
 fn sigmoidDeriv(sigmoid_out: NetType) NetType {
-    return sigmoid_out * (1.0 - sigmoid_out);
+    return sigmoid_out * (1 - sigmoid_out);
 }
-// endregion
 
-// region neural network
-fn randomNetType(rand: std.Random) NetType {
+inline fn randomNetType(rand: std.Random) NetType {
     if (NetType == f128)
         return @as(f128, rand.float(f64));
     return rand.float(NetType);
 }
 
 const NeuralNetwork = struct {
+    const Self = @This();
+
+    allocator: std.mem.Allocator,
     num_layers: usize,
     layer_sizes: []usize,
     activations: []Activation,
@@ -44,12 +44,11 @@ const NeuralNetwork = struct {
     weights: [][]NetType,
     biases: [][]NetType,
     errors: [][]NetType,
-    allocator: std.mem.Allocator,
 
-    pub fn create(
+    fn create(
         allocator: std.mem.Allocator,
         topology: []const usize,
-        activations_list: []const Activation,
+        activations: []const Activation,
         rand: std.Random,
     ) !*NeuralNetwork {
         const self = try allocator.create(NeuralNetwork);
@@ -62,12 +61,12 @@ const NeuralNetwork = struct {
         @memcpy(self.layer_sizes, topology);
 
         self.activations = try allocator.alloc(Activation, self.num_layers);
-        @memcpy(self.activations, activations_list);
+        @memcpy(self.activations, activations);
 
         self.layers = try allocator.alloc([]NetType, self.num_layers);
         for (topology, 0..) |size, i| {
             self.layers[i] = try allocator.alloc(NetType, size);
-            @memset(self.layers[i], 0.0);
+            @memset(self.layers[i], 0);
         }
 
         const num_slices = self.num_layers - 1;
@@ -82,20 +81,22 @@ const NeuralNetwork = struct {
             self.weights[layer_idx] = try allocator.alloc(NetType, rows * cols);
             self.biases[layer_idx] = try allocator.alloc(NetType, rows);
             self.errors[layer_idx] = try allocator.alloc(NetType, rows);
-            @memset(self.errors[layer_idx], 0.0);
+            @memset(self.errors[layer_idx], 0);
 
             for (0..rows) |row| {
                 const offset = row * cols;
+
                 for (0..cols) |col|
-                    self.weights[layer_idx][offset + col] = rand.float(NetType) * 2.0 - 1.0;
-                self.biases[layer_idx][row] = rand.float(NetType) * 2.0 - 1.0;
+                    self.weights[layer_idx][offset + col] = rand.float(NetType) * 2 - 1;
+
+                self.biases[layer_idx][row] = rand.float(NetType) * 2 - 1;
             }
         }
 
         return self;
     }
 
-    pub fn deinit(self: *NeuralNetwork) void {
+    fn deinit(self: *NeuralNetwork) void {
         const allocator = self.allocator;
 
         for (self.layers) |layer|
@@ -116,7 +117,7 @@ const NeuralNetwork = struct {
         allocator.destroy(self);
     }
 
-    pub fn forward(self: *NeuralNetwork, inputs: []const NetType) []NetType {
+    fn forward(self: *NeuralNetwork, inputs: []const NetType) []NetType {
         @memcpy(self.layers[0], inputs);
 
         for (0..self.num_layers - 1) |layer_idx| {
@@ -142,7 +143,7 @@ const NeuralNetwork = struct {
         return self.layers[self.num_layers - 1];
     }
 
-    pub fn backpropagate(self: *NeuralNetwork, targets: []const NetType, learning_rate: NetType) void {
+    fn backpropagate(self: *NeuralNetwork, targets: []const NetType, learning_rate: NetType) void {
         const out_layer_idx = self.num_layers - 1;
         const out_layer_size = self.layer_sizes[out_layer_idx];
         const out_deriv = self.activations[out_layer_idx].deriv_ptr.?;
@@ -164,7 +165,7 @@ const NeuralNetwork = struct {
             const next_weights = self.weights[l_idx + 1];
 
             for (0..current_size) |neuron_idx| {
-                var err: NetType = 0.0;
+                var err: NetType = 0;
                 for (0..next_size) |next_neuron_idx|
                     err += next_errors[next_neuron_idx] * next_weights[next_neuron_idx * current_size + neuron_idx];
 
@@ -193,17 +194,17 @@ const NeuralNetwork = struct {
         }
     }
 
-    pub fn lossMseDataset(self: *NeuralNetwork, dataset_inputs: []const []const NetType, dataset_targets: []const []const NetType) NetType {
+    fn lossMseDataset(self: *NeuralNetwork, dataset_inputs: []const []const NetType, dataset_targets: []const []const NetType) NetType {
         std.debug.assert(dataset_inputs.len == dataset_targets.len);
         std.debug.assert(dataset_inputs.len > 0);
 
-        var total_loss: NetType = 0.0;
+        var total_loss: NetType = 0;
         const out_layer_idx = self.num_layers - 1;
         const output_size = self.layer_sizes[out_layer_idx];
 
         for (dataset_inputs, dataset_targets) |sample_input, sample_target| {
             const outputs = self.forward(sample_input);
-            var sample_loss: NetType = 0.0;
+            var sample_loss: NetType = 0;
 
             for (0..output_size) |out_idx| {
                 const diff = sample_target[out_idx] - outputs[out_idx];
@@ -240,7 +241,12 @@ pub fn main() !void {
         .{ .fn_ptr = sigmoidAct, .deriv_ptr = sigmoidDeriv },
     };
 
-    const nn = try NeuralNetwork.create(allocator, &topology, &activations, rand);
+    const nn = try NeuralNetwork.create(
+        allocator,
+        &topology,
+        &activations,
+        rand,
+    );
     defer nn.deinit();
 
     // train

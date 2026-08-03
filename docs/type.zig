@@ -1,100 +1,112 @@
-//! Top-level
-//! documentation comment
+const std = @import("std");
 
-/// Documentation
-/// comment
-const std = @import("std"); // global line comment: order is ignored
+/// export.variable (runtime)
+export var exported_var: u8 = 0;
 
-pub fn main() !void {
-    // local line comment
+/// export.function (runtime)
+export fn exportedFn() void {}
 
-    // region type:contents
-    // region types:qualifiers
+/// extern.variable
+extern var external_var: u8;
+
+/// extern.function (runtime)
+extern fn externalFn() void;
+
+/// extern.structure
+const ExternStruct = extern struct {
+    x: u8,
+    y: u32,
+};
+
+/// extern.union
+const ExternUnion = extern union {
+    x: u32,
+    y: f32,
+};
+
+/// scope.file
+const global_var = 0;
+
+test "scope.block" {
+    const local_var = 0;
+    _ = local_var;
+}
+
+test "discard" {
+    const expression = 0;
+    _ = expression;
+}
+
+test "value" {
+    // undefined:
     {
-        var mutable: u8 = 0b1;
-        const immutable: u8 = 0o7;
-        const volatile_ptr: *volatile u8 = &mutable;
+        const a: u8 = undefined;
+        const b = undefined;
+        const c: @TypeOf(undefined) = undefined;
 
-        mutable = 0xF;
-        _ = immutable;
-        _ = volatile_ptr;
+        _ = a;
+        _ = b;
+        _ = c;
     }
-    // endregion
 
-    // region types:as:local
+    // type (compile-time):
     {
-        var int = @as(u8, 0);
-        const float = @as(f16, 3.14);
+        const a = type;
+        const b: type = type;
 
-        int = 0;
-        _ = float;
+        const c = u8;
+        const d: type = u8;
+        const _e: d = 0;
+        const _f = struct {
+            fn g() type {}
+
+            fn h() d {}
+        };
+
+        _ = a;
+        _ = b;
+        _ = c;
+        _ = _e;
+        _ = _f;
     }
-    // endregion
 
-    // region types:type
+    // void:
     {
-        const x = u8;
-        _ = x;
-    }
-    // endregion
+        const a = {};
+        const b: void = {};
 
-    // region types:comptime:undefined:local
+        _ = a;
+        _ = b;
+    }
+
+    // tensor.scalar.boolean:
     {
-        const inferred_undefined = undefined;
+        const a = true;
+        const b: bool = false;
 
-        _ = inferred_undefined;
+        _ = a;
+        _ = b;
     }
-    // endregion
 
-    // region types:scalar:undefined:local
+    // tensor.scalar.compile-time.integer:
     {
-        var explicit_undefined: u8 = undefined; // garbage
+        const a = 0;
+        const b: comptime_int = 0b0_1 + 0o0_7 + 0x0_f + 9_0e+0_1 + 0.0 + '🔥';
 
-        explicit_undefined = 0;
+        _ = a;
+        _ = b;
     }
-    // endregion
 
-    // region types:comptime:scalar:integer:local
+    // tensor.scalar.compile-time.float:
     {
-        const inferred_comptime_integer = 0;
-        const explicit_comptime_integer: comptime_int = 0;
+        const a = 1.0E-0_1 + 0x.fp+0_1 + 0xF.FP-0_1;
+        const b: comptime_float = 0;
 
-        _ = inferred_comptime_integer;
-        _ = explicit_comptime_integer;
+        _ = a;
+        _ = b;
     }
-    // endregion
 
-    // region types:comptime:scalar:float:local
-    {
-        const inferred_comptime_float = 0;
-        const explicit_comptime_float: comptime_float = 0.0;
-
-        _ = inferred_comptime_float;
-        _ = explicit_comptime_float;
-    }
-    // endregion
-
-    // region types:scalar:boolean:local
-    {
-        var inferred_flag = false;
-        const explicit_flag: bool = true;
-
-        inferred_flag = true;
-        _ = explicit_flag;
-    }
-    // endregion
-
-    // region types:scalar:integer:local
-    {
-        const zero: u8 = 0.0;
-        // var non_zero: u8 = -3.14; // XXX: fractional component prevents float value '-3.14' from coercion to type 'u8'
-
-        _ = zero;
-        // _ = non_zero;
-    }
-    // endregion
-
-    // region types:scalar:integer:unsigned:local
+    // tensor.scalar.integer:
     {
         const custom_u1_max: u1 = 1;
         const u8_max: u8 = 255;
@@ -102,7 +114,15 @@ pub fn main() !void {
         const u32_max: u32 = 4_294_967_295;
         const u64_max: u64 = 18_446_744_073_709_551_615;
         const u128_max: u128 = 340_282_366_920_938_463_463_374_607_431_768_211_455;
-        var custom_u65535_max: u65535 = undefined;
+        const custom_u65535_max: u65535 = undefined;
+
+        const custom_i1_min: i1 = -1;
+        const i8_min: i8 = -128;
+        const i16_min: i16 = -32_768;
+        const i32_min: i32 = -2_147_483_648;
+        const i64_min: i64 = -9_223_372_036_854_775_808;
+        const i128_min: i128 = -170_141_183_460_469_231_731_687_303_715_884_105_728;
+        const custom_i65535_min: i65535 = undefined;
 
         _ = custom_u1_max;
         _ = u8_max;
@@ -110,513 +130,496 @@ pub fn main() !void {
         _ = u32_max;
         _ = u64_max;
         _ = u128_max;
-        custom_u65535_max = 0;
-    }
-    // endregion
-
-    // region types:scalar:integer:signed:local
-    {
-        const custom_i1_min: i1 = -1;
-        const i8_min: i8 = -128;
-        const i16_min: i16 = -32_768;
-        const i32_min: i32 = -2_147_483_648;
-        const i64_min: i64 = -9_223_372_036_854_775_808;
-        const i128_min: i128 = -170_141_183_460_469_231_731_687_303_715_884_105_728;
-        var custom_i65535_min: i65535 = undefined;
-
+        _ = custom_u65535_max;
         _ = custom_i1_min;
         _ = i8_min;
         _ = i16_min;
         _ = i32_min;
         _ = i64_min;
         _ = i128_min;
-        custom_i65535_min = 0;
+        _ = custom_i65535_min;
     }
-    // endregion
 
-    // region types:scalar:integer:architecture:local
+    // tensor.scalar.float:
     {
-        var unsigned_size: usize = 123;
-        const signed_size: isize = -123;
-
-        unsigned_size = 0;
-        _ = signed_size;
-    }
-    // endregion
-
-    // region types:scalar:float:local
-    {
-        var f16_size: f16 = undefined;
-        const f32_size: f32 = 4.0;
+        const f16_size: f16 = 2;
+        const f32_size: f32 = f16_size * 2;
         const f64_size: f64 = f32_size * 2;
-        const f80_size: f80 = 10.0;
-        const f128_size: f128 = 16.0;
-
-        f16_size = 2;
-        _ = f64_size;
-        _ = f80_size;
+        const f80_size: f80 = f64_size * 2;
+        const f128_size: f128 = f80_size;
         _ = f128_size;
     }
-    // endregion
 
-    // region types:scalar:vector
+    // tensor.vector
     {
-        const Vec4 = @Vector(4, f32);
+        const Vec1 = @Vector(1, f16);
+        const Vec2: type = @Vector(2, f16);
 
-        var a: Vec4 = .{ 1, 2, 3, 4 };
-        a[0] = 0;
-        const b: Vec4 = .{ a[3], 20, 30, 40 };
-        const c = a * b;
-        const arr: [4]f32 = c;
-        std.debug.print("{any}\n", .{arr});
-    }
-    // endregion
+        const a: Vec1 = .{0};
+        const b = Vec2{ 1, 2 };
+        const c: @Vector(3, f16) = .{ 3, 4, 5 };
 
-    // region types:comptime:constructor:optional:local
-    {
-        const immutable_optional = null;
-
-        _ = immutable_optional;
-    }
-    // endregion
-
-    // region types:constructor:optional:local
-    {
-        var mutable_optional: ?u8 = null;
-
-        mutable_optional = 0;
-    }
-    // endregion
-
-    // region types:array:local
-    {
-        var mutable_array = [_]u16{ 0, 1, 2, 3 };
-        const immutable_array: [4]u8 = .{
-            @as(u8, @truncate(mutable_array[3])) + 1,
-            5,
-            6,
-            7,
-        };
-
-        const last_idx = mutable_array.len - 1;
-        mutable_array[last_idx] = 3000;
-        const last_value = mutable_array[last_idx];
-        std.debug.print("{}\n", .{last_value}); // 3000
-        _ = immutable_array;
-    }
-    // endregion
-
-    // region types:scalar:char:local
-    {
-        var mutable_char: u8 = 'a'; // 97
-        const immutable_char: u32 = '🔥'; // 128293
-
-        mutable_char = @truncate(immutable_char);
-    }
-    // endregion
-
-    // region types:array:str:local
-    {
-        const inferred_str = "Inferred string";
-        const explicit_str: [:0]const u8 = "Explicit string";
-        const c_str = [_]u8{ 65, 'r', 'c', 'h', ' ', 'b', inferred_str[9], 'w' };
-
-        _ = explicit_str;
-        _ = c_str;
-    }
-    // endregion
-
-    // region scalar:array:slice:local
-    {
-        var mutable_array = [_]u16{ 0, 1, 2, 3 };
-        var full_slice: []u16 = &mutable_array;
-        const one = 1;
-        var slice = full_slice[one..3]; // {1, 2}
-
-        std.debug.print("{}\n", .{full_slice[0]}); // 0
-        std.debug.print("{}\n", .{full_slice.len}); // 4
-
-        std.debug.print("{}\n", .{slice[0]}); // 1
-        std.debug.print("{}\n", .{slice.len}); // 2
-    }
-    // endregion
-
-    // region types:constructor:pointer:local
-    {
-        var foo: i32 = undefined;
-        const ptr_to_foo: *i32 = &foo;
-        ptr_to_foo.* = 10; // foo = 10;
-
-        const ptr_to_ptr: *const *i32 = &ptr_to_foo;
-        ptr_to_ptr.*.* = 200; // foo = 200;
-    }
-    // endregion
-
-    // region types:constructor:pointer:array:local
-    {
-        var mutable_array = [_]u16{ 0, 1, 2, 3 };
-        const ptr_to_array = &mutable_array[0];
-        std.debug.print("{}\n", .{ptr_to_array.*}); // 0
-    }
-    // endregion
-
-    // region types:constructor:pointer:slice:local
-    {
-        var mutable_array = [_]u16{ 0, 1, 2, 3 };
-        var full_slice: []u16 = &mutable_array;
-        var slice = full_slice[1..3];
-        const ptr_to_slice = &slice[0];
-        ptr_to_slice.* = 40000;
-        std.debug.print("{}\n", .{mutable_array[1]}); // 40000
-    }
-    // endregion
-
-    // region types:composite:struct:unpacked:local
-    {
-        const Point = struct {
-            x: i32 = 0,
-            y: i32 align(32),
-
-            const DEFAULT_DELTA: i32 = 64;
-
-            pub fn moveX(self: *@This(), delta: ?i32) void {
-                self.x += delta orelse DEFAULT_DELTA;
-            }
-        };
-        const Vector: type = struct { values: []i32, len: usize };
-
-        var mutable_point: Point = .{ .y = 4 };
-        const immutable_point = Point{ .x = 8, .y = @field(mutable_point, "y") * 4 };
-
-        mutable_point.x = 32;
-        mutable_point.moveX(null);
-        std.debug.print("{}\n", .{mutable_point.x}); // 96
-        std.debug.print("{}\n", .{immutable_point.y}); // 16
-        _ = Vector;
-    }
-    // endregion
-
-    // region types:composite:struct:packed:local
-    {
-        const inferred_Byte = packed struct {
-            a: u4,
-            b: u4,
-        };
-        const explicit_Byte: type = packed struct {
-            c: u8,
-        };
-
-        _ = inferred_Byte;
-        _ = explicit_Byte;
-    }
-    // endregion
-
-    // region types:composite:enum:local
-    {
-        const inferred_Color = enum {
-            red,
-            green,
-            blue,
-        };
-        const explicit_State: type = enum(u4) { idle, running, paused, stopped };
-
-        var color: inferred_Color = .red;
-        color = .green;
-        const color_int: u8 = @intFromEnum(color);
-        const color_back: inferred_Color = @enumFromInt(color_int);
-
-        const state = .idle;
-
-        _ = explicit_State;
-        _ = color_back;
-        _ = state;
-    }
-    // endregion
-
-    // region types:composite:union:untagged:local
-    {
-        const inferred_Value = union {
-            int: i32,
-            float: f32,
-        };
-        const explicit_Value: type = union {
-            int: i32,
-            float: f32,
-        };
-
-        var value: inferred_Value = .{ .int = 10 };
-        value = .{ .float = 3.14 };
-        // value.int = 200; // XXX: access of union field 'int' while field 'float' is active
-        value = .{ .int = 200 };
-        _ = explicit_Value;
-    }
-    // endregion
-
-    // region types:composite:union:tagged:local
-    {
-        const inferred_TaggedValue = union(enum) {
-            int: i32,
-            float: f32,
-        };
-        const explicit_TaggedValue1: type = union(enum(i8)) {
-            int: i32,
-            float: f32,
-        };
-        const Value_Tag = enum {
-            int,
-            float,
-        };
-        const explicit_TaggedValue2: type = union(Value_Tag) {
-            int: i32,
-            float: f32,
-        };
-
-        var tagged_value: inferred_TaggedValue = .{ .int = 10 };
-
-        switch (tagged_value) {
-            .int => |*i| i.* = 200,
-            .float => {},
-        }
-
-        _ = explicit_TaggedValue1;
-        _ = explicit_TaggedValue2;
-    }
-    // endregion
-
-    // region types:anytype:local
-    {
-        print_value(10);
-        print_value(3.14);
-    }
-    // endregion
-
-    // region types:constructor:error:local
-    {
-        try open_file(false);
-        // region types:void:local
-        {
-            const result: void = open_file(false) catch |err| {
-                return err;
-            };
-            _ = result;
-        }
-        // endregion
-    }
-    // endregion
-
-    // region types:comptime:type:local
-    {
-        _ = try alloc(u8, 2);
-        inspect(u8);
-    }
-    // endregion
-
-    // region types:todo:comptime_expressions
-    {
-        comptime var x = 10;
-        x += 5;
-        const static_res = x;
-        _ = static_res;
-    }
-    // endregion
-
-    // region types:todo:function_type
-    {
-        const func_t = *const fn (i32) i32;
-        const my_func: func_t = id_func;
-        _ = my_func(5);
-    }
-    // endregion
-
-    // region types:todo:multiline_string_literals
-    {
-        const multiline =
-            \\Line one
-            \\Line two
-        ;
-        _ = multiline;
-    }
-    // endregion
-
-    // region types:todo:anyopaque
-    {
-        var opaque_val: i32 = 42;
-        const ptr: *anyopaque = &opaque_val;
-        const aligned_ptr: *i32 = @ptrCast(@alignCast(ptr));
-        _ = aligned_ptr;
-    }
-    // endregion
-
-    // region types:todo:anonymous_structs
-    {
-        const anon = .{ .status = 200, .msg = "OK" };
-        _ = anon.status;
-    }
-    // endregion
-
-    // region types:todo:early_return
-    {
-        const check = early_return_test(true);
-        _ = check;
-    }
-    // endregion
-
-    // region types:todo:allowzero_pointers
-    {
-        const zero_ptr: ?*allowzero i32 = @ptrFromInt(0);
-        _ = zero_ptr;
-    }
-    // endregion
-
-    // region types:todo:escape_sequences
-    {
-        const escaped = "Hello\n\t\"World\" \x41 \u{1F525}";
-        _ = escaped;
-    }
-    // endregion
-
-    // region types:todo:tuples_and_destructuring
-    {
-        const tuple = .{ 1, @as(u32, 2), 3 };
-        const x, var y, const z = tuple;
-        _ = x;
-        y += 1;
-        _ = z;
-
-        const a, const b, const c = tuple;
         _ = a;
         _ = b;
         _ = c;
     }
-    // endregion
 
-    // region types:todo:numeric_literals
+    // constructor.error.literal:
     {
-        const scientific = 1.23e-4;
-        const hex_float = 0x1.aP1;
-        _ = scientific;
-        _ = hex_float;
-    }
-    // endregion
+        const a = error.SkipZigTest;
+        const b: error{SkipZigTest} = error.SkipZigTest;
 
-    // region types:todo:address_spaces
-    {
-        var local_var: i32 = 10;
-        const embedded_ptr: *addrspace(.gs) i32 = @addrSpaceCast(&local_var);
-        _ = embedded_ptr;
+        std.debug.print("{}\n{}\n", .{ a, b });
     }
-    // endregion
 
-    // region types:todo:calling_conventions
+    // constructor.error.set:
     {
-        const c_func = struct {
-            fn callme() callconv(.c) void {}
-        }.callme;
-        _ = c_func();
-    }
-    // endregion
+        const a = error{};
+        const b: type = error{
+            OutOfMemory,
+            FileNotFound,
+            AccessDenied,
+        };
+        const c = b.OutOfMemory;
+        const d: b = b.OutOfMemory;
+        const e: b = error.OutOfMemory;
+        const f: b = error{OutOfMemory}.OutOfMemory;
 
-    // region types:todo:opaque_types
-    {
-        const ContextMock = opaque {};
-        _ = *ContextMock;
+        std.debug.print("{}\n{}\n{}\n{}\n{}\n", .{ a, c, d, e, f });
     }
-    // endregion
 
-    // region types:todo:void_initialization
+    // constructor.error.union:
     {
-        const empty_void: void = {};
-        _ = empty_void;
-    }
-    // endregion
+        const _a = error.SkipZigTest;
+        const _b = error{SkipZigTest};
 
-    // region types:todo:struct_initialization_syntax
-    {
-        const Dummy = struct {};
-        const instance = Dummy{};
-        _ = instance;
+        const c: _b!u8 = _b.SkipZigTest;
+        const d: _b!u8 = error.SkipZigTest;
+        const _e = struct {
+            inline fn f() !u8 {
+                return _a;
+            }
+        };
+        const g = _e.f();
+
+        std.debug.print("{any}\n{any}\n{any}\n", .{ c, d, g });
     }
-    // endregion
-    // endregion
+
+    // constructor.error.union.any:
+    {
+        const a: anyerror = error.SkipZigTest;
+        const b: anyerror!u8 = a;
+
+        std.debug.print("{any}\n", .{b});
+    }
+
+    // constructor.optional:
+    {
+        const a: ?u8 = 0;
+        const b = null;
+        const c: @TypeOf(null) = null;
+        const d = a.?;
+        const e: u8 = a.?;
+
+        _ = b;
+        _ = c;
+        _ = d;
+        _ = e;
+    }
+
+    // constructor.pointer:
+    {
+        const _a: u8 = undefined;
+        const _b = [_]u8{ 0, 1 };
+
+        const c = &_a;
+        const d: *const u8 = &_a;
+        const e: *const anyopaque = &_a;
+        const f: [*]const u8 = &_b;
+        const g = d.*;
+        const h: u8 = d.*;
+
+        _ = c;
+        _ = e;
+        _ = f;
+        _ = g;
+        _ = h;
+    }
+
+    // tensor.pointer.array:
+    {
+        const a = [_]u8{ 0, 1 };
+        const b = [2]u8{ 2, 3 };
+        const c = [_:0]u8{ 4, 5 };
+        const d = [2:0]u8{ 6, 7 };
+        const g: [2]u8 = .{ 8, 9 };
+        const h: [2:0]u8 = .{ 10, 11 };
+
+        const e = a.len;
+        const f: usize = a.len;
+
+        var _g: [2]u8 = undefined;
+        _g = [_]u8{ 14, 15 };
+        var _h: [2:0]u8 = undefined;
+        _h = [_:0]u8{ 14, 15 };
+
+        const k: [*]u8 = &_g;
+        const l: [*]const u8 = &.{ 16, 17 };
+        const m: [*:0]u8 = &_h;
+        const n: [*:0]const u8 = &.{ 20, 21 };
+
+        _ = b;
+        _ = c;
+        _ = d;
+        _ = e;
+        _ = f;
+        _ = g;
+        _ = h;
+        _ = k;
+        _ = l;
+        _ = m;
+        _ = n;
+    }
+
+    // tensor.pointer.array.string
+    {
+        const a = "\\\n\t\x41\u{1f525}\u{1F525}";
+        const b: *const [5:0]u8 = "Hello";
+        const c: *const [5]u8 = "Hello";
+
+        const d =
+            \\ First line
+            \\ Second line
+        ;
+        const e: *const [24:0]u8 =
+            \\ First line
+            \\ Second line
+        ;
+        const f: *const [24]u8 =
+            \\ First line
+            \\ Second line
+        ;
+
+        _ = a;
+        _ = b;
+        _ = c;
+        _ = d;
+        _ = e;
+        _ = f;
+    }
+
+    // tensor.pointer.array.slice:
+    {
+        const _a = [_]u8{ 0, 1, 2 };
+        const _b = [_:0]u8{ 3, 4, 5 };
+
+        const c = &_a;
+        const d: []const u8 = &_a;
+        const e: *const [3]u8 = &_a;
+        const f = _a[0..];
+        const g: []const u8 = _a[0..3];
+        const h: *const [3]u8 = _a[0..3];
+
+        const k = &_b;
+        const l: [:0]const u8 = &_b;
+        const m: *const [3:0]u8 = &_b;
+        const n = _b[0.. :0];
+        const o: [:0]const u8 = _b[0..3 :0];
+        const p: *const [3:0]u8 = _b[0..3 :0];
+
+        const q = h.len;
+        const r: usize = h.len;
+
+        const s = h.ptr;
+        const t: [*]const u8 = h.ptr;
+        const u = h.ptr;
+        const v: [*:0]const u8 = p.ptr;
+
+        _ = c;
+        _ = d;
+        _ = e;
+        _ = f;
+        _ = g;
+        _ = k;
+        _ = l;
+        _ = m;
+        _ = n;
+        _ = o;
+        _ = q;
+        _ = r;
+        _ = s;
+        _ = t;
+        _ = u;
+        _ = v;
+    }
+
+    // tensor.pointer.array.slice.string
+    {
+        const a: []const u8 = "Hello";
+        const b: [:0]const u8 = "Hello";
+
+        _ = a;
+        _ = b;
+    }
+
+    // composite.structure:
+    {
+        const a = struct {};
+        const b = .{ .x = 0 };
+        const c: type = packed struct {
+            x: u4,
+            y: u4,
+        };
+        const d = struct {
+            const Self = @This();
+
+            x: u8 = 0,
+
+            var y: usize = 0;
+
+            fn moveX(self: *Self, z: u8) void {
+                defer {
+                    y += 1;
+                    Self.y += 1;
+                }
+                self.x += z;
+                self.*.x += z;
+            }
+        };
+
+        var e = d{};
+        e.moveX(0);
+        d.moveX(&e, 0);
+        const f: d = d{};
+        const g: d = .{ .x = 0 };
+        const h = struct { x: u8 }{ .x = 0 };
+
+        _ = a;
+        _ = b;
+        _ = c;
+        _ = f;
+        _ = g;
+        _ = h;
+    }
+
+    // composite.structure.tuple:
+    {
+        const c = .{};
+        const d: struct {} = .{};
+        const a = struct { bool, u8 };
+        const b: type = struct { bool, u8 };
+
+        const e = .{0};
+        const f: struct { comptime_int } = .{0};
+        const g: a = .{ false, 0 };
+        const h = a{ false, 0 };
+        const k: struct { bool, u8 } = a{ false, 0 };
+        const l = struct { bool, u8 }{ false, 0 };
+        const m: struct { bool, u8 } = struct { bool, u8 }{ false, 0 };
+
+        _ = b;
+        _ = c;
+        _ = d;
+        _ = e;
+        _ = f;
+        _ = g;
+        _ = h;
+        _ = k;
+        _ = l;
+        _ = m;
+    }
+
+    // composite.union:
+    {
+        const a = union {};
+        const b: type = union {};
+        const c: type = packed union { x: u8 };
+        const d: type = union { x: u8, y: u16 };
+
+        const e: c = .{ .x = 0 };
+        const f = c{ .x = 0 };
+        const g: c = c{ .x = 0 };
+        const h = union { x: u8 }{ .x = 0 };
+
+        _ = a;
+        _ = b;
+        _ = d;
+        _ = e;
+        _ = f;
+        _ = g;
+        _ = h;
+    }
+
+    // composite.enumeration:
+    {
+        const a = enum {};
+        const b: type = enum {};
+        const c = enum(u8) { red, green, blue };
+
+        const d = .red;
+        const e: c = .red;
+        const f = c.red;
+        const g: c = c.red;
+        const h: @EnumLiteral() = .green;
+
+        _ = a;
+        _ = b;
+        _ = d;
+        _ = e;
+        _ = f;
+        _ = g;
+        _ = h;
+    }
+
+    // composite.union.enumeration:
+    {
+        const _a = enum { int, float };
+
+        const b = union(_a) {
+            int: i32,
+            float: f32,
+        };
+        const c: type = union(enum) {
+            int: i32,
+            float: f32,
+        };
+        const d = union(enum(u8)) {
+            int: i32,
+            float: f32,
+        };
+
+        _ = b;
+        _ = c;
+        _ = d;
+    }
+
+    // composite.opaque
+    {
+        const a = opaque {};
+        const b: type = opaque {};
+
+        _ = a;
+        _ = b;
+    }
+
+    // function:
+    {
+        const _a = struct {
+            fn add(a: i32, b: i32) i32 {
+                return a + b;
+            }
+
+            pub fn sub(a: i32, b: i32) i32 {
+                return a - b;
+            }
+        };
+
+        const b = _a.add;
+        const c: fn (i32, i32) i32 = _a.sub;
+        const d = b(1, 2);
+        const e: i32 = c(1, 2);
+
+        _ = d;
+        _ = e;
+    }
+
+    // block:
+    main_blk: {
+        const a: void = blk: {
+            break :blk;
+        };
+        const b = blk: {
+            break :blk 0;
+        };
+        const c: comptime_int = blk: {
+            break :blk 0;
+        };
+        const d = {
+            break :main_blk;
+        };
+        const e: noreturn = {
+            break :main_blk;
+        };
+
+        _ = a;
+        _ = b;
+        _ = c;
+        _ = d;
+        _ = e;
+    }
 }
 
-// region types:void:global
-inline fn bar() void {}
-// endregion
+test "comptime.variable" {
+    comptime var a: u8 = 0;
+    var b: u8 = comptime 0;
 
-// region types:constructor:error:global
-inline fn open_file(is_testing: bool) FileError!void {
-    if (is_testing) return FileError.Test;
+    a += 1;
+    b += 1;
+
+    const squares = blk: {
+        comptime {
+            var result: u8 = 0;
+            result += 1;
+            break :blk result;
+        }
+    };
+    _ = squares;
 }
 
-inline fn close_file() anyerror!void {
-    return error.NotFound;
+// comptime.function
+fn alloc(comptime T: type, n: usize) ![]T {
+    const allocator = std.heap.page_allocator;
+    return try allocator.alloc(T, n);
 }
 
-const FileError = error{
-    NotFound,
-    AccessDenied,
-    Test,
-};
-// endregion
+/// value.linksection
+const linked_var: u8 linksection(".section") = 0;
+fn linked_fn() linksection(".section") void {}
 
-// region types:anytype:global
-inline fn print_value(x: anytype) void {
+/// value.function.anytype
+inline fn printValue(x: anytype) void {
     std.debug.print("{}\n", .{x});
 }
-// endregion
 
-// region types:comptime:type:global
-fn alloc(comptime T: type, len: usize) ![]T {
-    const allocator = std.heap.page_allocator;
-    return try allocator.alloc(T, len);
+/// value.function.noreturn
+inline fn exit(status: u8) noreturn {
+    std.process.exit(status);
 }
 
-fn inspect(comptime T: type) void {
-    const info = @typeInfo(T);
+/// qualifiers.accessibility
+pub const public_var = 0;
+const private_var = 0;
 
-    switch (info) {
-        .int => |i| {
-            std.debug.print("int bits={}\n", .{i.bits});
-        },
-        .float => |f| {
-            std.debug.print("float bits={}\n", .{f.bits});
-        },
-        .@"struct" => {
-            std.debug.print("struct\n", .{});
-        },
-        .pointer => {
-            std.debug.print("pointer\n", .{});
-        },
-        else => {
-            std.debug.print("other\n", .{});
-        },
-    }
-}
-// endregion
+test "qualifiers.mutability" {
+    var mutable: u8 = undefined;
+    const immutable = mutable;
 
-// region types:todo:global_modifiers
-pub const EXPORTED_CONSTANT: i32 = 999;
-threadlocal var tl_state: u32 = 0;
-
-fn id_func(x: i32) i32 {
-    return x;
+    mutable += 1;
+    _ = immutable;
 }
 
-fn early_return_test(cond: bool) i32 {
-    if (cond) return 1;
-    return 0;
-}
+/// qualifiers.threadlocal:
+threadlocal var thread_id_counter: u8 = 0;
 
-fn linksection_test() callconv(.C) void {
+test "qualifiers.pointer" {
+    var data: u8 = undefined;
+    var aligned_data: u32 align(@alignOf(u32)) = undefined;
+
+    const const_ptr: *const u8 = &data;
+    const volatile_ptr: *volatile u8 = &data;
+    const zero_ptr: *allowzero u8 = @ptrFromInt(0);
+    const aligned_ptr: *align(4) u32 = &aligned_data;
+    const addressed_ptr: *addrspace(.generic) u8 = &data;
+
     _ = struct {
-        var external_var: i32 linksection(".data") = 0;
+        fn copy(noalias dst: []u8, noalias src: []const u8) void {
+            @memcpy(dst, src);
+        }
     };
-}
-// endregion
 
-// region types:todo:anonymous_structs
-fn createPoint(a: u32) struct { a: u32 } {
-    return .{ .a = a };
+    _ = const_ptr;
+    _ = volatile_ptr;
+    _ = zero_ptr;
+    _ = aligned_ptr;
+    _ = addressed_ptr;
 }
-// endregion

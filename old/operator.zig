@@ -275,3 +275,5 @@ pub fn main() !void {
 
     std.log.info("exit successfully: operator", .{});
 }
+
+// TODO: tuple unpacking / a.len / a.ptr / a.* / array->slice / comptime

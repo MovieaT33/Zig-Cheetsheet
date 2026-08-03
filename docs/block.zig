@@ -1,332 +1,300 @@
-// region block:contents
-// [1]  block:block
-// [2]  block:if
-// [3]  block:while
-// [4]  block:for
-// [5]  block:switch
-// [6]  block:switch:tagged_union
-// [7]  block:switch:error
-// [8]  block:unreachable
-// [9]  block:defer
-// [10] block:errdefer
-// endregion
-
 const std = @import("std");
-const math = std.math;
 
-pub fn main() !void {
-    // Block can also be an expression
+test "unreachable" {
+    if (false)
+        unreachable;
+}
 
-    // region block:block
+test "block" {
     {
-        const block_value = blk: {
-            const a: u8 = 5;
-            const b: u8 = 10;
-            break :blk a + b;
-        };
-        _ = block_value;
-
-        outer: while (true) {
-            while (true)
-                break :outer;
-        }
+        const a: u8 = 0;
+        _ = a;
     }
-    // endregion
+}
 
-    // region block:if
-    {
-        // 1
-        _ = if (true) true else false;
+test "block.label" {
+    const a: u8 = blk: {
+        const b = 1;
+        const c: u8 = 2;
 
-        // 2
-        const a = 5;
-        const b = 10;
-        _ = blk: {
-            if (@abs(a - b) > 15) {
-                break :blk a + b;
-            } else if (a > b) {
-                break :blk a;
-            } else if (a < b) {
-                break :blk b;
-            } else {
-                break :blk a;
-            }
-        };
+        break :blk b + c;
+    };
+    _ = a;
+}
 
-        // 3
-        var optional_value: ?u8 = 5;
-        if (optional_value) |*value| {
-            if (value.* > 0)
-                value.* -= 1;
+test "block.defer" {
+    var a: u8 = 0;
+    _ = {
+        defer a = 2;
+        defer {
+            a = 3;
+            a = 4;
         }
+        a = 1;
+    };
+    std.debug.print("{}\n", .{a}); // 2
+}
 
-        _ = if (optional_value) |value|
-            value
+test "block.errdefer" {
+    const a = struct {
+        var b = false;
+
+        fn c(d: bool) !void {
+            errdefer @This().b = true;
+            errdefer {
+                @This().b = true;
+                @This().b = false;
+            }
+
+            if (d) return error.SkipZigTest;
+        }
+    };
+
+    a.c(true) catch {};
+    std.debug.print("{}\n", .{a.b}); // true
+}
+
+test "if" {
+    const a: void = if (false) true;
+    const b =
+        if (false)
+            true
+        else if (true)
+            false;
+    const c =
+        if (false)
+            true
         else
-            0;
+            false;
+    const d =
+        if (false)
+            true
+        else if (true)
+            false
+        else
+            false;
 
-        // 4
-        const error_union: anyerror!u8 = 5;
-        if (error_union) |success_value| {
-            _ = success_value;
-        } else |err| _ = err;
+    if (false) {}
+    if (false) {} else if (true) {}
+    if (false) {} else {}
+    if (false) {} else if (true) {} else {}
 
-        // 5
-        _ = blk: {
-            if (false) {
-                break :blk @as(u8, 5);
-            } else {
-                break :blk @as(u8, 10);
-            }
-        };
+    _ = a;
+    _ = b;
+    _ = c;
+    _ = d;
+}
+
+test "if.error" {
+    const a: anyerror!u8 = 2;
+    if (a) |x| {
+        _ = x;
+    } else |y| _ = y;
+}
+
+test "if.optional" {
+    var a: ?u8 = 1;
+    if (a) |*x| {
+        if (x.* > 0)
+            x.* -= 1;
+    } else |y| _ = y;
+}
+
+test "while" {
+    _ = while (false) true;
+    _ = while (false) true else false;
+
+    var a: u8 = 0;
+    while (a < 5) : (a += 1) {
+        if (a == 2) continue;
+        if (a == 4) break;
     }
-    // endregion
 
-    // region block:while
-    {
-        // 1
-        while (false) {
-            break;
-        }
+    comptime var b = 0;
+    inline while (b < 3) : (b += 1)
+        continue;
+}
 
-        // 2
-        var i: u8 = 0;
-        while (i < 5) : (i += 1) {
-            if (i == 2) continue;
-            if (i == 4) break;
-        }
+test "while.label" {
+    outer: while (true) {
+        while (false)
+            continue :outer;
+        break :outer;
+    }
+}
 
-        // 3
-        var iterator_source: ?u8 = 5;
-        while (iterator_source) |*value| {
-            if (value.* == 0) break;
-            // value.* = null; // XXX: expected type 'u8', found '@TypeOf(null)'
-            value.* -= 1;
-        }
+test "while.error" {
+    var a: anyerror!u8 = 10;
+    while (a) |x| {
+        _ = x;
+        a = error.SkipZigTest;
+    } else |y| {
+        std.log.err("{}", .{y});
+    }
+}
 
-        // 4
-        var optional_value: ?u8 = 10;
-        while (optional_value) |value| : (optional_value = if (value > 1) value - 1 else null)
-            continue;
+test "while.optional" {
+    var a: ?u8 = 1;
+    while (a) |*x| {
+        if (x.* == 0) break;
+        // XXX: expected type 'u8', found '@TypeOf(null)':
+        // value.* = null;
+        x.* -= 1;
+    }
 
-        // 5
-        var count: u8 = 0;
-        _ = blk: while (count < 15) : (count += 1) {
-            if (count == 5) break :blk @as(u8, 20);
-        } else @as(u8, 25);
+    const b: ?u8 = 2;
+    while (b) |x| : (x = if (x) x - 1 else null)
+        continue;
+}
 
-        // 6
-        var error_source: anyerror!u8 = 10;
-        while (error_source) |value| {
-            _ = value;
-            error_source = error.SomeError;
+test "for" {
+    for (0..2) |_|
+        break;
+
+    for (0..2) |_|
+        continue;
+
+    const a = [_]u8{ 0, 1, 2 };
+
+    for (a, 0..) |x, y| {
+        _ = x;
+        _ = y;
+    }
+
+    var b = [_]u8{ 3, 4, 5 };
+    for (&b) |*x|
+        x.* *= 2;
+
+    _ = blk: for (a) |x| {
+        if (x == 1) break :blk true;
+    } else false;
+
+    const User = struct { id: u32, active: bool };
+    var users = [_]User{
+        .{ .id = 1, .active = true },
+        .{ .id = 2, .active = false },
+    };
+
+    for (&users) |*user| {
+        if (!user.active)
+            user.active = true;
+    }
+
+    const maybe_numbers = [_]?u8{ 10, null, 30 };
+    for (maybe_numbers) |maybe_num| {
+        if (maybe_num) |num|
+            _ = num;
+    }
+
+    const ResultError = error{ Overflow, InvalidData };
+    const results = [_]ResultError!u8{ 5, ResultError.Overflow, 25 };
+
+    for (results) |res| {
+        const value = res catch 0;
+        _ = value;
+
+        if (res) |success_value| {
+            _ = success_value;
         } else |err| {
             std.log.err("{}", .{err});
         }
-
-        // 7
-        comptime var inline_i = 0;
-        inline while (inline_i < 3) : (inline_i += 1) {
-            continue;
-        }
     }
-    // endregion
 
-    // region block:for
-    {
-        // 1
-        for (0..10) |_|
-            continue;
-
-        // 2
-        const items = [_]u8{ 1, 2, 3 };
-
-        for (items, 0..) |item, index| {
-            _ = item;
-            _ = index;
-        }
-
-        // 3
-        var mutable_items = [_]u8{ 1, 2, 3 };
-        for (&mutable_items) |*item| {
-            item.* *= 2;
-        }
-
-        // 4
-        _ = blk: for (items) |item| {
-            if (item == 20) break :blk true;
-        } else false;
-
-        // 5
-        const User = struct { id: u32, active: bool };
-        var users = [_]User{
-            .{ .id = 1, .active = true },
-            .{ .id = 2, .active = false },
-        };
-
-        for (&users) |*user| {
-            if (!user.active)
-                user.active = true;
-        }
-
-        // 6
-        const maybe_numbers = [_]?u8{ 10, null, 30 };
-        for (maybe_numbers) |maybe_num| {
-            if (maybe_num) |num|
-                _ = num;
-        }
-
-        // 7
-        const ResultError = error{ Overflow, InvalidData };
-        const results = [_]ResultError!u8{ 5, ResultError.Overflow, 25 };
-
-        for (results) |res| {
-            const value = res catch 0;
-            _ = value;
-
-            if (res) |success_value| {
-                _ = success_value;
-            } else |err| {
-                std.log.err("{}", .{err});
-            }
-        }
-
-        // 8
-        const ids = [_]u8{ 101, 102, 103 };
-        const scores = [_]u8{ 85, 92, 78 };
-        for (ids, scores) |id, score| {
-            _ = id;
-            _ = score;
-        }
-
-        // 9
-        const types = .{ i32, f64, bool };
-
-        inline for (types) |T| {
-            const size = @sizeOf(T);
-            _ = size;
-        }
+    const ids = [_]u8{ 101, 102, 103 };
+    const scores = [_]u8{ 85, 92, 78 };
+    for (ids, scores) |id, score| {
+        _ = id;
+        _ = score;
     }
-    // endregion
 
-    // region block:switch
-    {
-        const a: u8 = 2;
-        const b = 10;
+    const types = .{ i32, f64, bool };
 
-        _ = switch (a) {
-            0 => @as(u8, 5),
-            1, 2 => @as(u8, 10),
-            3, b => blk: {
-                break :blk @as(u8, 15);
-            },
-            else => @as(u8, 20),
-        };
-
-        _ = blk: switch (a) {
-            2 => {
-                const c = a * 2;
-                break :blk @as(i8, c);
-            },
-            else => break :blk @as(i8, -1),
-        };
-
-        switch (a) {
-            0 => return,
-            else => {},
-        }
+    inline for (types) |T| {
+        const size = @sizeOf(T);
+        _ = size;
     }
-    // endregion
-
-    // region block:switch:tagged_union
-    {
-        const Tag = enum {
-            int,
-            float,
-            text,
-        };
-
-        const Payload = union(Tag) {
-            int: i32,
-            float: f64,
-            text: []const u8,
-        };
-
-        var value = Payload{ .int = 42 };
-
-        switch (value) {
-            .int => |val| _ = val,
-            .float => |val| _ = val,
-            .text => |val| _ = val,
-        }
-
-        const is_numerical = blk: switch (value) {
-            .int, .float => break :blk true,
-            .text => break :blk false,
-        };
-        _ = is_numerical;
-
-        switch (value) {
-            else => {},
-            .int => |*val| val.* += 1,
-        }
-    }
-    // endregion
-
-    // region block:switch:error
-    {
-        const MyError = error{ ValidationError, NetworkError };
-        const res: MyError!u32 = error.ValidationError;
-
-        _ = res catch |err| switch (err) {
-            error.ValidationError => @as(u32, 400),
-            error.NetworkError => @as(u32, 500),
-        };
-
-        if (res) |success_val| {
-            _ = success_val;
-        } else |err| switch (err) {
-            error.ValidationError => {},
-            error.NetworkError => {},
-        }
-    }
-    // endregion
-
-    // region block:unreachable
-    {
-        if (false) {
-            const x = true;
-            if (!x) unreachable;
-        }
-    }
-    // endregion
-
-    // region block:defer
-    {
-        var defer_check: u8 = 1;
-        {
-            defer defer_check = 2;
-            defer defer_check = 3;
-        }
-
-        std.log.debug("defer_check = {}", .{defer_check}); // 2
-    }
-    // endregion
-
-    // region block:errdefer
-    {
-        const closure = struct {
-            fn run(fail: bool) !void {
-                var clean_flag = false;
-                errdefer clean_flag = true;
-
-                if (fail) return error.ForcedFailure;
-            }
-        };
-
-        closure.run(true) catch {};
-    }
-    // endregion
-
-    std.log.info("exit successfully: block", .{});
 }
+
+test "for.label" {
+    _ = outer: for (0..4) |_| {
+        for (0..4) |_|
+            break :outer;
+    };
+}
+
+test "switch" {
+    const a: u8 = 1;
+    const b = 2;
+
+    _ = switch (a) {
+        0 => @as(u8, 5),
+        1, 2 => @as(u8, 10),
+        3, b => blk: {
+            break :blk @as(u8, 15);
+        },
+        else => @as(u8, 20),
+    };
+
+    _ = blk: switch (a) {
+        2 => {
+            const c = a * 2;
+            break :blk @as(i8, c);
+        },
+        else => break :blk @as(i8, -1),
+    };
+
+    switch (a) {
+        0 => return,
+        else => {},
+    }
+
+    const Tag = enum {
+        int,
+        float,
+        text,
+    };
+
+    const Payload = union(Tag) {
+        int: i32,
+        float: f64,
+        text: []const u8,
+    };
+
+    var value = Payload{ .int = 42 };
+
+    switch (value) {
+        .int => |val| _ = val,
+        .float => |val| _ = val,
+        .text => |val| _ = val,
+    }
+
+    const is_numerical = blk: switch (value) {
+        .int, .float => break :blk true,
+        .text => break :blk false,
+    };
+    _ = is_numerical;
+
+    switch (value) {
+        else => {},
+        .int => |*val| val.* += 1,
+    }
+
+    const MyError = error{ ValidationError, NetworkError };
+    const res: MyError!u32 = error.ValidationError;
+
+    _ = res catch |err| switch (err) {
+        error.ValidationError => @as(u32, 400),
+        error.NetworkError => @as(u32, 500),
+    };
+
+    if (res) |success_val| {
+        _ = success_val;
+    } else |err| switch (err) {
+        error.ValidationError => {},
+        error.NetworkError => {},
+    }
+}
+
+test "switch.label" {}
+
+test "switch.catch" {}
