@@ -2,7 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const math = std.math;
 
-const NetType = f32; // f32 is the fastest
+const NetType = f64; // f32 is the fastest
 const ActivationFunc = *const fn (x: NetType) NetType;
 const ActivationDeriv = *const fn (x: NetType) NetType;
 
@@ -32,6 +32,13 @@ fn sigmoidDeriv(sigmoid_out: NetType) NetType {
 const NeuralNetwork = struct {
     const Self = @This();
 
+    const EvolutionConfig = struct {
+        population_size: usize,
+        generations: usize,
+        mutation_strength: NetType,
+        mutation_rate: NetType,
+    };
+
     allocator: Allocator,
     layer_count: usize,
     layer_sizes: []usize,
@@ -50,10 +57,10 @@ const NeuralNetwork = struct {
     }
 
     fn create(
-        allocator: Allocator,
         topology: []const usize,
         activations: []const Activation,
         rand: std.Random,
+        allocator: Allocator,
     ) Allocator.Error!*Self {
         const self = try allocator.create(Self);
         errdefer allocator.destroy(self);
@@ -122,6 +129,23 @@ const NeuralNetwork = struct {
         allocator.destroy(self);
     }
 
+    fn clone(self: *const Self, rand: std.Random) !*Self {
+        return .create(
+            self.layer_sizes,
+            self.activations,
+            rand,
+            self.allocator,
+        );
+    }
+
+    fn copyParameters(self: *Self, source: *const Self) void {
+        for (self.weights, source.weights) |layer, src_layer|
+            @memcpy(layer, src_layer);
+
+        for (self.biases, source.biases) |layer, src_layer|
+            @memcpy(layer, src_layer);
+    }
+
     fn forward(self: *Self, inputs: []const NetType) []NetType {
         @memcpy(self.neurons[0], inputs);
 
@@ -148,6 +172,35 @@ const NeuralNetwork = struct {
         }
 
         return self.neurons[self.layer_count - 1];
+    }
+
+    fn lossMseDataset(
+        self: *Self,
+        dataset_inputs: []const []const NetType,
+        dataset_targets: []const []const NetType,
+    ) NetType {
+        std.debug.assert(dataset_inputs.len == dataset_targets.len);
+        std.debug.assert(dataset_inputs.len > 0);
+
+        const out_layer_idx = self.layer_count - 1;
+        const out_size = self.layer_sizes[out_layer_idx];
+
+        var total_loss: NetType = 0;
+
+        for (dataset_inputs, dataset_targets) |sample_input, sample_target| {
+            const outputs = self.forward(sample_input);
+            var sample_loss: NetType = 0;
+
+            for (0..out_size) |out_idx| {
+                const out_error = sample_target[out_idx] - outputs[out_idx];
+                const squared_error = out_error * out_error;
+                sample_loss += squared_error;
+            }
+
+            total_loss += sample_loss / @as(NetType, @floatFromInt(out_size));
+        }
+
+        return total_loss / @as(NetType, @floatFromInt(dataset_inputs.len));
     }
 
     fn backpropagate(
@@ -210,42 +263,127 @@ const NeuralNetwork = struct {
         }
     }
 
-    fn lossMseDataset(
+    fn mutate(
         self: *Self,
-        dataset_inputs: []const []const NetType,
-        dataset_targets: []const []const NetType,
-    ) NetType {
-        std.debug.assert(dataset_inputs.len == dataset_targets.len);
-        std.debug.assert(dataset_inputs.len > 0);
-
-        const out_layer_idx = self.layer_count - 1;
-        const out_size = self.layer_sizes[out_layer_idx];
-
-        var total_loss: NetType = 0;
-
-        for (dataset_inputs, dataset_targets) |sample_input, sample_target| {
-            const outputs = self.forward(sample_input);
-            var sample_loss: NetType = 0;
-
-            for (0..out_size) |out_idx| {
-                const out_error = sample_target[out_idx] - outputs[out_idx];
-                const squared_error = out_error * out_error;
-                sample_loss += squared_error;
+        mutation_rate: NetType,
+        mutation_strength: NetType,
+        rand: std.Random,
+    ) void {
+        for (self.weights) |layer| {
+            for (layer) |*weight| {
+                if (randomNetValue(rand) < mutation_rate)
+                    weight.* += randomNetValue(rand) *
+                        mutation_strength * 2 -
+                        mutation_strength;
             }
-
-            total_loss += sample_loss / @as(NetType, @floatFromInt(out_size));
         }
 
-        return total_loss / @as(NetType, @floatFromInt(dataset_inputs.len));
+        for (self.biases) |layer| {
+            for (layer) |*bias| {
+                if (randomNetValue(rand) < mutation_rate)
+                    bias.* += randomNetValue(rand) *
+                        mutation_strength * 2 -
+                        mutation_strength;
+            }
+        }
+    }
+
+    fn evolve(
+        self: *Self,
+        inputs: []const []const NetType,
+        targets: []const []const NetType,
+        config: EvolutionConfig,
+        rand: std.Random,
+    ) !void {
+        var population = try self.allocator.alloc(
+            *Self,
+            config.population_size,
+        );
+        defer {
+            for (population) |network|
+                network.deinit();
+
+            self.allocator.free(population);
+        }
+
+        for (population) |*network| {
+            network.* = try self.clone(rand);
+            network.*.copyParameters(self);
+            network.*.mutate(
+                1,
+                1,
+                rand,
+            );
+        }
+
+        const progress_step = @max(1, config.generations / 1_000);
+        var best_loss: NetType = std.math.inf(NetType);
+
+        for (0..config.generations) |generation| {
+            var best = population[0];
+            best_loss = best.lossMseDataset(inputs, targets);
+
+            for (population[1..]) |network| {
+                const loss = network.lossMseDataset(inputs, targets);
+
+                if (loss < best_loss) {
+                    best = network;
+                    best_loss = loss;
+                }
+            }
+
+            self.copyParameters(best);
+
+            // check if the loss is too high after 50 generations, if so, return an error
+            if (generation == 50 and best_loss > 0.0001)
+                return error.LossTooHigh;
+
+            if (best_loss == 0) {
+                std.debug.print("\nevolution finished early\n", .{});
+                break;
+            }
+
+            if (generation % progress_step == 0 or generation + 1 == config.generations) {
+                const progress =
+                    @as(NetType, @floatFromInt(generation + 1)) /
+                    @as(NetType, @floatFromInt(config.generations)) * 100;
+
+                std.debug.print(
+                    "train/evolution: \x1b[32m{d:.1}%\x1b[0m | generation {}/{} | loss: {d:.20}\r",
+                    .{
+                        progress,
+                        generation + 1,
+                        config.generations,
+                        best_loss,
+                    },
+                );
+            }
+
+            for (population, 0..) |network, index| {
+                network.copyParameters(best);
+
+                if (index == 0)
+                    continue;
+
+                network.mutate(
+                    config.mutation_rate,
+                    config.mutation_strength,
+                    rand,
+                );
+            }
+        }
     }
 };
 
-const epochs = 1_000_000;
-const lr = 0.005;
-
 pub fn main(init: std.process.Init) !void {
     var gpa = std.heap.DebugAllocator(.{}){};
-    defer _ = gpa.deinit();
+    defer {
+        const leaked = gpa.detectLeaks();
+        if (leaked != 0)
+            std.log.err("leaked: {}", .{leaked});
+
+        _ = gpa.deinit();
+    }
     const allocator = gpa.allocator();
 
     var prng: std.Random.DefaultPrng = .init(blk: {
@@ -266,10 +404,10 @@ pub fn main(init: std.process.Init) !void {
     };
 
     const nn = try NeuralNetwork.create(
-        allocator,
         &topology,
         &activations,
         rand,
+        allocator,
     );
     defer nn.deinit();
 
@@ -285,24 +423,17 @@ pub fn main(init: std.process.Init) !void {
         &[_]NetType{0.7}, &[_]NetType{0.8}, &[_]NetType{0.9},
     };
 
-    const progress_step = epochs / 1_000;
-    for (0..epochs) |epoch| {
-        if (epoch % progress_step == 0) {
-            const loss = nn.lossMseDataset(&inputs, &targets);
-            std.debug.print(
-                "training progress: \x1b[32m{d:.0}%\x1b[0m | loss: {d:.12}\r",
-                .{
-                    @as(f32, @floatFromInt(epoch)) / @as(f32, @floatFromInt(epochs)) * 100,
-                    loss,
-                },
-            );
-        }
-
-        for (inputs, 0..) |sample_input, sample_idx| {
-            _ = nn.forward(sample_input);
-            nn.backpropagate(targets[sample_idx], lr);
-        }
-    }
+    try nn.evolve(
+        &inputs,
+        &targets,
+        .{
+            .population_size = 50,
+            .generations = 1_000_000,
+            .mutation_rate = 0.1,
+            .mutation_strength = 0.05,
+        },
+        rand,
+    );
 
     // print results
     std.debug.print("\nresults:\n", .{});
@@ -310,14 +441,28 @@ pub fn main(init: std.process.Init) !void {
         const outputs = nn.forward(input);
 
         std.debug.print(
-            "[{d:.1}, {d:.1}] > [{d:.12}] < [\x1b[38;2;241;250;140m{d:.1}\x1b[0m]\n",
+            "[{d:.1}, {d:.1}] > [{d:.20}] < [\x1b[38;2;241;250;140m{d:.1}\x1b[0m]\n",
             .{ input[0], input[1], outputs[0], target[0] },
         );
     }
 
     const final_loss = nn.lossMseDataset(&inputs, &targets);
+    var zeros: usize = 0;
+    if (final_loss > 0) {
+        var x = @abs(final_loss);
+        while (x < 1) {
+            x *= 10;
+
+            if (x < 1) {
+                zeros += 1;
+            } else {
+                break;
+            }
+        }
+    }
+
     std.debug.print(
-        "\x1b[1mmse loss\x1b[0m: \x1b[31;1m{d:.12}\x1b[0m\n",
-        .{final_loss},
+        "\x1b[1mmse loss\x1b[0m: \x1b[31;1m{d:.20}\x1b[0m ({} zeros)\n",
+        .{ final_loss, zeros },
     );
 }
