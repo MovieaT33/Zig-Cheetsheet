@@ -40,12 +40,7 @@ pub fn main(init: std.process.Init) !void {
     );
     defer network.deinit();
 
-    // Example input for the neural network.
-    const output_layer = network.layer_sizes.len - 1;
-    const output_layer_size = network.layer_sizes[output_layer];
-    const output_base = network.offsets.layers[output_layer];
-    const output = network.buffers.neurons[output_base..][0..output_layer_size];
-
+    // Train and refine the network.
     const inputs = [_]NetType{
         0.5, 0.5,
         0.1, 0.1,
@@ -55,24 +50,29 @@ pub fn main(init: std.process.Init) !void {
         0.1,
     };
 
-    std.debug.print(
-        "output: {any} | loss: {}\n",
-        .{ output, network.calculateMse(&inputs, &targets) },
-    );
+    network.train(&inputs, &targets, 1_000_000, 0.05);
+    network.train(&inputs, &targets, 1_000_000, 0.01);
+    network.train(&inputs, &targets, 1_000_000, 0.001);
 
-    std.debug.print("train:\n", .{});
-    network.train(&inputs, &targets, 10_000_000, 0.05);
-    std.debug.print("evolve\n", .{});
     try network.evolve(&inputs, &targets, .{
         .population_size = 100,
         .elite_count = 10,
-        .generations = 5_000,
+        .generations = 10_000,
         .mutation_rate = 0.05,
-        .mutation_strength = 0.05,
+        .mutation_strength = 0.005,
     }, rand);
-
-    std.debug.print(
-        "\noutput: {any} | loss: {}\n",
-        .{ output, network.calculateMse(&inputs, &targets) },
-    );
+    try network.evolve(&inputs, &targets, .{
+        .population_size = 10_000,
+        .elite_count = 1_000,
+        .generations = 100_000,
+        .mutation_rate = 0.1,
+        .mutation_strength = 0.000001,
+    }, rand);
+    try network.evolve(&inputs, &targets, .{
+        .population_size = 1_000,
+        .elite_count = 10,
+        .generations = 100_000,
+        .mutation_rate = 0.05,
+        .mutation_strength = 0.0000001,
+    }, rand);
 }

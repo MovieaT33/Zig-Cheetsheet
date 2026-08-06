@@ -551,6 +551,8 @@ pub const NeuralNetwork = struct {
                 self.backpropagate(target, learning_rate);
             }
         }
+
+        std.debug.print("\n", .{});
     }
 
     pub fn evolve(
@@ -559,7 +561,7 @@ pub const NeuralNetwork = struct {
         targets: []const NetType,
         config: EvolutionConfig,
         rand: std.Random,
-    ) !void {
+    ) Allocator.Error!void {
         std.debug.assert(config.population_size > 0);
         std.debug.assert(config.elite_count > 0);
         std.debug.assert(config.elite_count <= config.population_size);
@@ -646,7 +648,7 @@ pub const NeuralNetwork = struct {
                     100;
 
                 std.debug.print(
-                    "[evolve] \x1b[32m{d:.1}%\x1b[0m | generation {}/{} | mse loss: {d:.20}\r",
+                    "[evolve] \x1b[32m{d:.1}%\x1b[0m | generation {}/{} | \x1b[1mmse loss\x1b[0m: {}\r",
                     .{
                         progress,
                         generation + 1,
@@ -667,5 +669,7 @@ pub const NeuralNetwork = struct {
                 network.copyParameters(parent);
             }
         }
+
+        std.debug.print("\n", .{});
     }
 };
