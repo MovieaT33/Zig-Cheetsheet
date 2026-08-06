@@ -13,7 +13,6 @@ const NeuralNetwork = @import("nn.zig").NeuralNetwork;
 pub fn main(init: std.process.Init) !void {
     var gpa = std.heap.DebugAllocator(.{
         .safety = true,
-        .verbose_log = true,
     }){};
     defer _ = gpa.deinit();
 
@@ -61,10 +60,10 @@ pub fn main(init: std.process.Init) !void {
         .{ output, network.calculateMse(&inputs, &targets) },
     );
 
-    network.train(&inputs, &targets, 100_000, 0.05);
+    network.train(&inputs, &targets, 10_000_000, 0.05);
 
     std.debug.print(
-        "output: {any} | loss: {}\n",
+        "\noutput: {any} | loss: {}\n",
         .{ output, network.calculateMse(&inputs, &targets) },
     );
 }

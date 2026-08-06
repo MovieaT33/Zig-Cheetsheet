@@ -508,7 +508,24 @@ pub const NeuralNetwork = struct {
         const output_size = self.layer_sizes[output_layer];
         std.debug.assert(targets.len == output_size * sample_count);
 
-        for (0..epochs) |_| {
+        const progress_step =
+            @max(@as(usize, 1), epochs / 1_000);
+
+        for (0..epochs) |epoch| {
+            const is_last_epoch = epoch + 1 == epochs;
+
+            if (epoch % progress_step == 0 or is_last_epoch) {
+                const progress =
+                    @as(NetType, @floatFromInt(epoch + 1)) /
+                    @as(NetType, @floatFromInt(epochs)) *
+                    100;
+
+                std.debug.print(
+                    "[train] \x1b[32m{d:.1}%\x1b[0m | epoch {}/{}\r",
+                    .{ progress, epoch + 1, epochs },
+                );
+            }
+
             for (0..sample_count) |sample| {
                 const input =
                     inputs[input_size * sample ..][0..input_size];
