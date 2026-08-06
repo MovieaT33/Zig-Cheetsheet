@@ -54,6 +54,7 @@ pub const NeuralNetwork = struct {
     fn randomNetValue(rand: std.Random) NetType {
         return switch (NetType) {
             f16 => @as(f16, @floatCast(rand.float(f32))),
+            f80 => @as(f80, rand.float(f64)),
             f128 => @as(f128, rand.float(f64)),
             else => rand.float(NetType),
         };
