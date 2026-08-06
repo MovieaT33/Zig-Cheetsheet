@@ -44,9 +44,16 @@ test "value" {
         const b = undefined;
         const c: @TypeOf(undefined) = undefined;
 
+        const _d = struct {
+            fn e() void {
+                return undefined;
+            }
+        };
+
         _ = a;
         _ = b;
         _ = c;
+        _ = _d;
     }
 
     // type (compile-time):
