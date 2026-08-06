@@ -44,8 +44,8 @@ pub const NeuralNetwork = struct {
         };
     }
 
-    fn randomParameter(rand: std.Random) NetType {
-        return randomNetValue(rand) * 2 - 1;
+    fn randomBufferValue(rand: std.Random) NetType {
+        return randomNetValue(rand) * 2 - 1; // [-1; 1)
     }
 
     fn randomizeBuffers(self: *Self, rand: std.Random) void {
@@ -63,10 +63,29 @@ pub const NeuralNetwork = struct {
 
             // Randomize weights and biases.
             for (weight_layer) |*weight|
-                weight.* = randomParameter(rand);
+                weight.* = randomBufferValue(rand);
 
             for (bias_layer) |*bias|
-                bias.* = randomParameter(rand);
+                bias.* = randomBufferValue(rand);
+        }
+    }
+
+    fn mutateSlice(
+        slice: []NetType,
+        mutation_rate: NetType,
+        mutation_strength: NetType,
+        rand: std.Random,
+    ) void {
+        for (slice) |*value| {
+            const should_mutate =
+                randomNetValue(rand) < mutation_rate;
+
+            if (should_mutate) {
+                const mutation =
+                    randomBufferValue(rand) * mutation_strength;
+
+                value.* += mutation;
+            }
         }
     }
 

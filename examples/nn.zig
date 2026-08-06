@@ -65,31 +65,6 @@ const NeuralNetwork = struct {
         }
     }
 
-    fn mutate(
-        self: *Self,
-        mutation_rate: NetType,
-        mutation_strength: NetType,
-        rand: std.Random,
-    ) void {
-        for (self.weights) |layer| {
-            for (layer) |*weight| {
-                if (randomNetValue(rand) < mutation_rate)
-                    weight.* += randomNetValue(rand) *
-                        mutation_strength * 2 -
-                        mutation_strength;
-            }
-        }
-
-        for (self.biases) |layer| {
-            for (layer) |*bias| {
-                if (randomNetValue(rand) < mutation_rate)
-                    bias.* += randomNetValue(rand) *
-                        mutation_strength * 2 -
-                        mutation_strength;
-            }
-        }
-    }
-
     fn evolve(
         self: *Self,
         inputs: []const []const NetType,
