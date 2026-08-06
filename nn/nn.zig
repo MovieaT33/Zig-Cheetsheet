@@ -180,8 +180,11 @@ pub const NeuralNetwork = struct {
             input,
         );
 
-        const connection_count = self.layer_sizes.len - 1;
+        const neurons = self.buffers.neurons;
+        const weights = self.buffers.weights;
+        const biases = self.buffers.biases;
 
+        const connection_count = self.layer_sizes.len - 1;
         for (0..connection_count) |layer| {
             const in_size = self.layer_sizes[layer];
             const out_size = self.layer_sizes[layer + 1];
@@ -189,26 +192,22 @@ pub const NeuralNetwork = struct {
             const input_base = self.offsets.layers[layer];
             const output_base = self.offsets.layers[layer + 1];
 
-            const weight_base = self.offsets.weights[layer];
-            const bias_base = self.offsets.biases[layer];
+            var weight = self.offsets.weights[layer];
+            var bias = self.offsets.biases[layer];
 
-            const activation = self.activations[layer + 1];
+            const activation_forward = self.activations[layer + 1].forward.?;
 
             for (0..out_size) |out| {
-                var sum = self.buffers.biases[bias_base + out];
+                var sum = biases[bias];
 
-                for (0..in_size) |in| {
-                    const weight_index =
-                        weight_base +
-                        in_size * out +
-                        in;
-                    const weight = self.buffers.weights[weight_index];
-
-                    sum += self.buffers.neurons[input_base + in] * weight;
+                var in: usize = 0;
+                while (in < in_size) : (in += 1) {
+                    sum += neurons[input_base + in] * weights[weight];
+                    weight += 1;
                 }
 
-                self.buffers.neurons[output_base + out] =
-                    activation.forward.?(sum);
+                neurons[output_base + out] = activation_forward(sum);
+                bias += 1;
             }
         }
     }

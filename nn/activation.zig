@@ -10,6 +10,13 @@ pub const Activation = struct {
     derivative: ?ActivationDerivative,
 };
 
+pub const None = struct {
+    pub const activation = Activation{
+        .forward = null,
+        .derivative = null,
+    };
+};
+
 pub const Linear = struct {
     pub const activation = Activation{
         .forward = forward,

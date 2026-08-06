@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const activation = @import("activation.zig");
+const none = activation.None.activation;
 const linear = activation.Linear.activation;
 const relu = activation.ReLU.activation;
 const sigmoid = activation.Sigmoid.activation;
@@ -27,7 +28,7 @@ pub fn main(init: std.process.Init) !void {
     // Define the topology and activation functions for the neural network.
     const topology = [_]usize{ 2, 3, 1 };
     const activations = [_]Activation{
-        linear,
+        none,
         relu,
         sigmoid,
     };
