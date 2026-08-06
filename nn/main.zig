@@ -13,7 +13,6 @@ const NeuralNetwork = @import("nn.zig").NeuralNetwork;
 pub fn main(init: std.process.Init) !void {
     var gpa = std.heap.DebugAllocator(.{
         .safety = true,
-        .enable_memory_limit = true,
         .verbose_log = true,
     }){};
     defer _ = gpa.deinit();
@@ -51,6 +50,9 @@ pub fn main(init: std.process.Init) !void {
     const output_offset = network.offsets.layers[last_layer];
     const output = network.buffers.neurons[output_offset .. output_offset + last_layer_size];
 
-    std.debug.print("output: {any}\n", .{output});
-    std.log.info("total requested: {} bytes", .{gpa.total_requested_bytes});
+    std.debug.print("output: {any} | loss: {}\n", .{ output, network.calculateMse(
+        &.{ 1, 2 },
+        &.{2},
+        1,
+    ) });
 }

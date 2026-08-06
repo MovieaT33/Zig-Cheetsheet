@@ -229,6 +229,57 @@ pub const NeuralNetwork = struct {
         );
     }
 
+    pub fn calculateMse(
+        self: *Self,
+        inputs: []const NetType,
+        targets: []const NetType,
+        sample_count: usize,
+    ) NetType {
+        std.debug.assert(sample_count > 0);
+
+        const output_layer = self.layer_sizes.len - 1;
+
+        const input_size = self.layer_sizes[0];
+        std.debug.assert(inputs.len == input_size * sample_count);
+
+        const output_size = self.layer_sizes[output_layer];
+        std.debug.assert(targets.len == output_size * sample_count);
+
+        const output_base = self.offsets.layers[output_layer];
+        const output =
+            self.buffers.neurons[output_base .. output_base + output_size];
+
+        const inverse_output_size =
+            1 / @as(NetType, @floatFromInt(output_size));
+        const inverse_sample_count =
+            1 / @as(NetType, @floatFromInt(sample_count));
+
+        var total_loss: NetType = 0;
+
+        for (0..sample_count) |sample| {
+            const input_base = sample * input_size;
+            const target_base = sample * output_size;
+
+            const input =
+                inputs[input_base .. input_base + input_size];
+            const target =
+                targets[target_base .. target_base + output_size];
+
+            self.forward(input);
+
+            var sample_loss: NetType = 0;
+
+            for (output, target) |prediction, expected| {
+                const @"error" = expected - prediction;
+                sample_loss += @"error" * @"error";
+            }
+
+            total_loss += sample_loss * inverse_output_size;
+        }
+
+        return total_loss * inverse_sample_count;
+    }
+
     pub fn forward(self: *Self, input: []const NetType) void {
         std.debug.assert(input.len == self.layer_sizes[0]);
 
