@@ -27,6 +27,16 @@ pub const NeuralNetwork = struct {
         biases: usize,
     };
 
+    const EvolutionConfig = struct {
+        population_size: usize,
+        elite_count: usize,
+
+        generations: usize,
+
+        mutation_rate: NetType,
+        mutation_strength: NetType,
+    };
+
     layer_sizes: []usize,
 
     buffers: Buffers,
