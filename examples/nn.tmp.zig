@@ -1,70 +1,9 @@
-const NeuralNetwork = struct {
     const EvolutionConfig = struct {
         population_size: usize,
         generations: usize,
         mutation_strength: NetType,
         mutation_rate: NetType,
     };
-    fn backpropagate(
-        self: *Self,
-        targets: []const NetType,
-        learning_rate: NetType,
-    ) void {
-        const out_layer_idx = self.layer_count - 1;
-        const out_layer_size = self.layer_sizes[out_layer_idx];
-        const out_deriv_fn = self.activations[out_layer_idx].deriv_ptr.?;
-
-        for (0..out_layer_size) |neuron_idx| {
-            const out_value = self.neurons[out_layer_idx][neuron_idx];
-            const @"error" = targets[neuron_idx] - out_value;
-            self.deltas[out_layer_idx - 1][neuron_idx] = @"error" * out_deriv_fn(out_value);
-        }
-
-        var layer_idx_signed: isize = @intCast(out_layer_idx - 2);
-        while (layer_idx_signed >= 0) : (layer_idx_signed -= 1) {
-            const layer_idx: usize = @intCast(layer_idx_signed);
-
-            const current_size = self.layer_sizes[layer_idx + 1];
-            const next_size = self.layer_sizes[layer_idx + 2];
-
-            const next_deltas = self.deltas[layer_idx + 1];
-            const next_weights = self.weights[layer_idx + 1];
-
-            const hidden_deriv_fn = self.activations[layer_idx + 1].deriv_ptr.?;
-
-            for (0..current_size) |neuron_idx| {
-                var @"error": NetType = 0;
-                for (0..next_size) |next_neuron_idx| {
-                    const next_delta = next_deltas[next_neuron_idx];
-                    const weight = next_weights[current_size * next_neuron_idx + neuron_idx];
-                    @"error" += next_delta * weight;
-                }
-
-                const out_value = self.neurons[layer_idx + 1][neuron_idx];
-                self.deltas[layer_idx][neuron_idx] = @"error" * hidden_deriv_fn(out_value);
-            }
-        }
-
-        for (0..self.layer_count - 1) |layer_idx| {
-            const in_size = self.layer_sizes[layer_idx];
-            const out_size = self.layer_sizes[layer_idx + 1];
-
-            const layer_weights = self.weights[layer_idx];
-            const layer_deltas = self.deltas[layer_idx];
-            const layer_neurons = self.neurons[layer_idx];
-
-            for (0..out_size) |out_idx| {
-                const weight_offset = in_size * out_idx;
-                const scaled_delta = layer_deltas[out_idx] * learning_rate;
-
-                for (0..in_size) |in_idx|
-                    layer_weights[weight_offset + in_idx] += scaled_delta * layer_neurons[in_idx];
-
-                self.biases[layer_idx][out_idx] += scaled_delta;
-            }
-        }
-    }
-
     fn evolve(
         self: *Self,
         inputs: []const []const NetType,

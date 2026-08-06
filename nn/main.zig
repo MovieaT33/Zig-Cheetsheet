@@ -42,23 +42,29 @@ pub fn main(init: std.process.Init) !void {
     defer network.deinit();
 
     // Example input for the neural network.
-    const input = [_]NetType{ 0.5, -0.25 };
-    network.forward(&input);
+    const output_layer = network.layer_sizes.len - 1;
+    const output_layer_size = network.layer_sizes[output_layer];
+    const output_base = network.offsets.layers[output_layer];
+    const output = network.buffers.neurons[output_base..][0..output_layer_size];
 
-    const last_layer = network.layer_sizes.len - 1;
-    const last_layer_size = network.layer_sizes[last_layer];
-    const output_offset = network.offsets.layers[last_layer];
-    const output = network.buffers.neurons[output_offset .. output_offset + last_layer_size];
+    const inputs = [_]NetType{
+        0.5, 0.5,
+        0.1, 0.1,
+    };
+    const targets = [_]NetType{
+        0.5,
+        0.1,
+    };
 
-    std.debug.print("output: {any} | loss: {}\n", .{ output, network.calculateMse(
-        &.{ 1, 2 },
-        &.{2},
-        1,
-    ) });
-    network.mutateBuffers(1, 1, rand);
-    std.debug.print("output: {any} | loss: {}\n", .{ output, network.calculateMse(
-        &.{ 1, 2 },
-        &.{2},
-        1,
-    ) });
+    std.debug.print(
+        "output: {any} | loss: {}\n",
+        .{ output, network.calculateMse(&inputs, &targets, 2) },
+    );
+
+    network.train(&inputs, &targets, 2, 10_000, 0.05);
+
+    std.debug.print(
+        "output: {any} | loss: {}\n",
+        .{ output, network.calculateMse(&inputs, &targets, 2) },
+    );
 }

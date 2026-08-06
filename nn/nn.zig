@@ -50,16 +50,19 @@ pub const NeuralNetwork = struct {
 
     fn randomizeBuffers(self: *Self, rand: std.Random) void {
         const connection_count = self.layer_sizes.len - 1;
+
         for (0..connection_count) |layer| {
             const in_size = self.layer_sizes[layer];
             const out_size = self.layer_sizes[layer + 1];
             const weight_count = in_size * out_size;
-            const bias_count = out_size;
+
+            const weight_base = self.offsets.weights[layer];
+            const bias_base = self.offsets.biases[layer];
 
             const weight_layer =
-                self.buffers.weights[self.offsets.weights[layer] .. self.offsets.weights[layer] + weight_count];
+                self.buffers.weights[weight_base..][0..weight_count];
             const bias_layer =
-                self.buffers.biases[self.offsets.biases[layer] .. self.offsets.biases[layer] + bias_count];
+                self.buffers.biases[bias_base..][0..out_size];
 
             // Randomize weights and biases.
             for (weight_layer) |*weight|
@@ -112,7 +115,7 @@ pub const NeuralNetwork = struct {
         );
     }
 
-    fn allocateOffsets(self: *Self) Allocator.Error!void {
+    fn allocOffsets(self: *Self) Allocator.Error!void {
         const layer_count = self.layer_sizes.len;
         const connection_count = layer_count - 1;
 
@@ -158,7 +161,7 @@ pub const NeuralNetwork = struct {
         };
     }
 
-    fn allocateParameters(
+    fn allocParameters(
         self: *Self,
         layout: Layout,
     ) Allocator.Error!void {
@@ -181,7 +184,7 @@ pub const NeuralNetwork = struct {
             );
     }
 
-    fn initializeState(self: *Self, activations: []const Activation) void {
+    fn initState(self: *Self, activations: []const Activation) void {
         @memset(self.buffers.neurons, 0);
         @memset(self.buffers.deltas, 0);
 
@@ -205,13 +208,13 @@ pub const NeuralNetwork = struct {
         self.layer_sizes =
             try allocator.dupe(usize, topology);
 
-        try self.allocateOffsets();
+        try self.allocOffsets();
 
         const layout = self.calculateLayout();
 
-        try self.allocateParameters(layout);
+        try self.allocParameters(layout);
 
-        self.initializeState(activations);
+        self.initState(activations);
 
         self.randomizeBuffers(rand);
 
@@ -243,7 +246,7 @@ pub const NeuralNetwork = struct {
         self: *const Self,
         rand: std.Random,
     ) Allocator.Error!*Self {
-        return try Self.create(
+        return try .create(
             self.layer_sizes,
             self.activations,
             self.allocator,
@@ -254,6 +257,7 @@ pub const NeuralNetwork = struct {
     pub fn copyParameters(self: *Self, source: *const Self) void {
         std.debug.assert(self.buffers.weights.len == source.buffers.weights.len);
         std.debug.assert(self.buffers.biases.len == source.buffers.biases.len);
+        std.debug.assert(self.activations.len == source.activations.len);
 
         @memcpy(
             self.buffers.weights,
@@ -271,7 +275,7 @@ pub const NeuralNetwork = struct {
         );
     }
 
-    pub fn calculateMse(
+    pub fn calculateMse( // TODO
         self: *Self,
         inputs: []const NetType,
         targets: []const NetType,
@@ -289,7 +293,7 @@ pub const NeuralNetwork = struct {
 
         const output_base = self.offsets.layers[output_layer];
         const output =
-            self.buffers.neurons[output_base .. output_base + output_size];
+            self.buffers.neurons[output_base..][0..output_size];
 
         const inverse_output_size =
             1 / @as(NetType, @floatFromInt(output_size));
@@ -303,9 +307,9 @@ pub const NeuralNetwork = struct {
             const target_base = sample * output_size;
 
             const input =
-                inputs[input_base .. input_base + input_size];
+                inputs[input_base..][0..input_size];
             const target =
-                targets[target_base .. target_base + output_size];
+                targets[target_base..][0..output_size];
 
             self.forward(input);
 
@@ -322,36 +326,41 @@ pub const NeuralNetwork = struct {
         return total_loss * inverse_sample_count;
     }
 
-    pub fn forward(self: *Self, input: []const NetType) void {
-        std.debug.assert(input.len == self.layer_sizes[0]);
+    pub fn forward(self: *Self, inputs: []const NetType) void {
+        std.debug.assert(inputs.len == self.layer_sizes[0]);
 
         // Copy the input values into the first layer of neurons.
         @memcpy(
-            self.buffers.neurons[0..input.len],
-            input,
+            self.buffers.neurons[0..inputs.len],
+            inputs,
         );
 
         const connection_count = self.layer_sizes.len - 1;
+
         for (0..connection_count) |layer| {
             const next_layer = layer + 1;
 
             const in_size = self.layer_sizes[layer];
             const out_size = self.layer_sizes[next_layer];
             const weight_count = in_size * out_size;
-            const bias_count = out_size;
+
+            const layer_base = self.offsets.layers[layer];
+            const next_layer_base = self.offsets.layers[next_layer];
+            const weight_base = self.offsets.weights[layer];
+            const bias_base = self.offsets.biases[layer];
 
             const input_layer =
-                self.buffers.neurons[self.offsets.layers[layer] .. self.offsets.layers[layer] + in_size];
+                self.buffers.neurons[layer_base..][0..in_size];
             const output_layer =
-                self.buffers.neurons[self.offsets.layers[next_layer] .. self.offsets.layers[next_layer] + out_size];
+                self.buffers.neurons[next_layer_base..][0..out_size];
             const weight_layer =
-                self.buffers.weights[self.offsets.weights[layer] .. self.offsets.weights[layer] + weight_count];
+                self.buffers.weights[weight_base..][0..weight_count];
             const bias_layer =
-                self.buffers.biases[self.offsets.biases[layer] .. self.offsets.biases[layer] + bias_count];
+                self.buffers.biases[bias_base..][0..out_size];
 
             const activation_forward = self.activations[next_layer].forward.?;
 
-            // Compute the next layer.
+            // Calculate the next layer.
             var weight_index: usize = 0;
 
             for (0..out_size) |out| {
@@ -364,6 +373,150 @@ pub const NeuralNetwork = struct {
                 }
 
                 output_layer[out] = activation_forward(sum);
+            }
+        }
+    }
+
+    fn calculateOutputDeltas(self: *Self, targets: []const NetType) void {
+        const output_layer = self.layer_sizes.len - 1;
+        const output_size = self.layer_sizes[output_layer];
+
+        const output_base = self.offsets.layers[output_layer];
+        const delta_base = self.offsets.biases[output_layer - 1];
+
+        const outputs =
+            self.buffers.neurons[output_base..][0..output_size];
+        const deltas =
+            self.buffers.deltas[delta_base..][0..output_size];
+
+        const activation_derivative =
+            self.activations[output_layer].derivative.?;
+
+        for (outputs, targets, deltas) |output, target, *delta| {
+            const @"error" = target - output;
+            delta.* = @"error" * activation_derivative(output);
+        }
+    }
+
+    fn calculateHiddenDeltas(self: *Self) void { // TODO
+        var layer_signed: isize =
+            @intCast(self.layer_sizes.len - 3);
+
+        while (layer_signed >= 0) : (layer_signed -= 1) {
+            const layer: usize = @intCast(layer_signed);
+
+            const size = self.layer_sizes[layer + 1];
+            const next_size = self.layer_sizes[layer + 2];
+
+            const neuron_base = self.offsets.layers[layer + 1];
+            const delta_base = self.offsets.biases[layer];
+            const next_delta_base = self.offsets.biases[layer + 1];
+            const weight_base = self.offsets.weights[layer + 1];
+
+            const neurons =
+                self.buffers.neurons[neuron_base..][0..size];
+            const deltas =
+                self.buffers.deltas[delta_base..][0..size];
+            const next_deltas =
+                self.buffers.deltas[next_delta_base..][0..next_size];
+            const weights =
+                self.buffers.weights[weight_base..][0 .. size * next_size];
+
+            const activation_derivative =
+                self.activations[layer + 1].derivative.?;
+
+            for (0..size) |neuron| {
+                var @"error": NetType = 0;
+
+                for (0..next_size) |next| {
+                    @"error" +=
+                        next_deltas[next] *
+                        weights[size * next + neuron];
+                }
+
+                deltas[neuron] =
+                    @"error" * activation_derivative(neurons[neuron]);
+            }
+        }
+    }
+
+    fn updateBuffers(self: *Self, learning_rate: NetType) void {
+        const connection_count =
+            self.layer_sizes.len - 1;
+
+        for (0..connection_count) |layer| {
+            const in_size = self.layer_sizes[layer];
+            const out_size = self.layer_sizes[layer + 1];
+            const weight_count = in_size * out_size;
+
+            const input_base = self.offsets.layers[layer];
+            const weight_base = self.offsets.weights[layer];
+            const bias_base = self.offsets.biases[layer];
+            const delta_base = self.offsets.biases[layer];
+
+            const inputs =
+                self.buffers.neurons[input_base..][0..in_size];
+            const weights =
+                self.buffers.weights[weight_base..][0..weight_count];
+            const biases =
+                self.buffers.biases[bias_base..][0..out_size];
+            const deltas =
+                self.buffers.deltas[delta_base..][0..out_size];
+
+            // Apply the gradient update to weights and biases.
+            var weight_index: usize = 0;
+
+            for (0..out_size) |out| {
+                const scaled_delta =
+                    deltas[out] * learning_rate;
+
+                for (inputs) |in| {
+                    const weight_delta = in * scaled_delta;
+                    weights[weight_index] += weight_delta;
+                    weight_index += 1;
+                }
+
+                biases[out] += scaled_delta;
+            }
+        }
+    }
+
+    fn backpropagate(
+        self: *Self,
+        targets: []const NetType,
+        learning_rate: NetType,
+    ) void {
+        self.calculateOutputDeltas(targets);
+        self.calculateHiddenDeltas();
+        self.updateBuffers(learning_rate);
+    }
+
+    pub fn train( // TODO
+        self: *Self,
+        inputs: []const NetType,
+        targets: []const NetType,
+        sample_count: usize,
+        epochs: usize,
+        learning_rate: NetType,
+    ) void {
+        std.debug.assert(sample_count > 0);
+
+        const input_size = self.layer_sizes[0];
+        std.debug.assert(inputs.len == input_size * sample_count);
+
+        const output_layer = self.layer_sizes.len - 1;
+        const output_size = self.layer_sizes[output_layer];
+        std.debug.assert(targets.len == output_size * sample_count);
+
+        for (0..epochs) |_| {
+            for (0..sample_count) |sample| {
+                const input =
+                    inputs[input_size * sample ..][0..input_size];
+                const target =
+                    targets[output_size * sample ..][0..output_size];
+
+                self.forward(input);
+                self.backpropagate(target, learning_rate);
             }
         }
     }
