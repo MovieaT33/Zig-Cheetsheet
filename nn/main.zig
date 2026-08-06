@@ -33,8 +33,8 @@ pub fn main(init: std.process.Init) !void {
         sigmoid,
     };
 
-    // Create the neural network.
-    const network = try NeuralNetwork.create(
+    // Initialize the neural network.
+    const network = try NeuralNetwork.init(
         &topology,
         &activations,
         allocator,

@@ -21,6 +21,12 @@ pub const NeuralNetwork = struct {
         biases: []usize,
     };
 
+    const Layout = struct {
+        neurons: usize,
+        weights: usize,
+        biases: usize,
+    };
+
     layer_sizes: []usize,
 
     buffers: Buffers,
@@ -42,7 +48,108 @@ pub const NeuralNetwork = struct {
         return randomNetValue(rand) * 2 - 1;
     }
 
-    pub fn create(
+    fn randomizeBuffers(self: *Self, rand: std.Random) void {
+        const connection_count = self.layer_sizes.len - 1;
+        for (0..connection_count) |layer| {
+            const in_size = self.layer_sizes[layer];
+            const out_size = self.layer_sizes[layer + 1];
+            const weight_count = in_size * out_size;
+            const bias_count = out_size;
+
+            const weight_layer =
+                self.buffers.weights[self.offsets.weights[layer] .. self.offsets.weights[layer] + weight_count];
+            const bias_layer =
+                self.buffers.biases[self.offsets.biases[layer] .. self.offsets.biases[layer] + bias_count];
+
+            // Randomize weights and biases.
+            for (weight_layer) |*weight|
+                weight.* = randomParameter(rand);
+
+            for (bias_layer) |*bias|
+                bias.* = randomParameter(rand);
+        }
+    }
+
+    fn allocateOffsets(self: *Self) Allocator.Error!void {
+        const layer_count = self.layer_sizes.len;
+        const connection_count = layer_count - 1;
+
+        self.offsets.layers =
+            try self.allocator.alloc(usize, layer_count);
+
+        self.offsets.weights =
+            try self.allocator.alloc(usize, connection_count);
+
+        self.offsets.biases =
+            try self.allocator.alloc(usize, connection_count);
+    }
+
+    fn calculateLayout(self: *Self) Layout {
+        const connection_count = self.layer_sizes.len - 1;
+
+        var neuron_count: usize = 0;
+        var weight_count: usize = 0;
+        var bias_count: usize = 0;
+
+        // Calculate neuron offsets for each layer.
+        for (self.layer_sizes, 0..) |layer_size, layer| {
+            self.offsets.layers[layer] = neuron_count;
+            neuron_count += layer_size;
+        }
+
+        // Calculate weight and bias offsets for each connection.
+        for (0..connection_count) |connection| {
+            const in_size = self.layer_sizes[connection];
+            const out_size = self.layer_sizes[connection + 1];
+
+            self.offsets.weights[connection] = weight_count;
+            self.offsets.biases[connection] = bias_count;
+
+            weight_count += in_size * out_size;
+            bias_count += out_size;
+        }
+
+        return .{
+            .neurons = neuron_count,
+            .weights = weight_count,
+            .biases = bias_count,
+        };
+    }
+
+    fn allocateParameters(
+        self: *Self,
+        layout: Layout,
+    ) Allocator.Error!void {
+        self.buffers.neurons =
+            try self.allocator.alloc(NetType, layout.neurons);
+
+        self.buffers.weights =
+            try self.allocator.alloc(NetType, layout.weights);
+
+        self.buffers.biases =
+            try self.allocator.alloc(NetType, layout.biases);
+
+        self.buffers.deltas =
+            try self.allocator.alloc(NetType, layout.biases); // Deltas have the same size as biases.
+
+        self.activations =
+            try self.allocator.alloc(
+                Activation,
+                self.layer_sizes.len,
+            );
+    }
+
+    fn initializeState(self: *Self, activations: []const Activation) void {
+        @memset(self.buffers.neurons, 0);
+        @memset(self.buffers.deltas, 0);
+
+        @memcpy(
+            self.activations,
+            activations,
+        );
+    }
+
+    pub fn init(
         topology: []const usize,
         activations: []const Activation,
         allocator: Allocator,
@@ -54,96 +161,40 @@ pub const NeuralNetwork = struct {
         self.allocator = allocator;
 
         self.layer_sizes =
-            try self.allocator.dupe(usize, topology);
+            try allocator.dupe(usize, topology);
 
-        const layer_count = self.layer_sizes.len;
-        const connection_count = layer_count - 1;
-        self.offsets.layers =
-            try self.allocator.alloc(usize, layer_count);
-        self.offsets.weights =
-            try self.allocator.alloc(usize, connection_count);
-        self.offsets.biases =
-            try self.allocator.alloc(usize, connection_count);
+        try self.allocateOffsets();
 
-        var neuron_offset: usize = 0;
-        var weight_offset: usize = 0;
-        var bias_offset: usize = 0;
+        const layout = self.calculateLayout();
 
-        // Compute neuron offsets for each layer.
-        for (self.layer_sizes, 0..) |layer_size, layer| {
-            self.offsets.layers[layer] = neuron_offset;
-            neuron_offset += layer_size;
-        }
+        try self.allocateParameters(layout);
 
-        // Compute parameter offsets for each layer connection.
-        for (0..connection_count) |connection| {
-            const in_size = self.layer_sizes[connection];
-            const out_size = self.layer_sizes[connection + 1];
+        self.initializeState(activations);
 
-            self.offsets.weights[connection] = weight_offset;
-            self.offsets.biases[connection] = bias_offset;
-
-            weight_offset += in_size * out_size;
-            bias_offset += out_size;
-        }
-
-        self.buffers.neurons =
-            try self.allocator.alloc(NetType, neuron_offset);
-        self.buffers.weights =
-            try self.allocator.alloc(NetType, weight_offset);
-        self.buffers.biases =
-            try self.allocator.alloc(NetType, bias_offset);
-        self.buffers.deltas =
-            try self.allocator.alloc(NetType, bias_offset);
-
-        self.activations =
-            try self.allocator.alloc(Activation, layer_count);
-
-        @memset(self.buffers.neurons, 0);
-        @memset(self.buffers.deltas, 0);
-
-        @memcpy(self.activations, activations);
-
-        // Randomly initialize layer parameters.
-        for (0..connection_count) |layer| {
-            const in_size = self.layer_sizes[layer];
-            const out_size = self.layer_sizes[layer + 1];
-
-            const weight_base = self.offsets.weights[layer];
-            const bias_base = self.offsets.biases[layer];
-
-            for (0..out_size) |out| {
-                for (0..in_size) |in| {
-                    const weight_index =
-                        weight_base +
-                        in_size * out +
-                        in;
-                    self.buffers.weights[weight_index] = randomParameter(rand);
-                }
-
-                const bias_index = bias_base + out;
-                self.buffers.biases[bias_index] = randomParameter(rand);
-            }
-        }
+        self.randomizeBuffers(rand);
 
         return self;
     }
 
     pub fn deinit(self: *Self) void {
-        self.allocator.free(self.layer_sizes);
+        const allocator = self.allocator;
+        defer allocator.destroy(self);
 
-        self.allocator.free(self.buffers.neurons);
-        self.allocator.free(self.buffers.weights);
-        self.allocator.free(self.buffers.biases);
-        self.allocator.free(self.buffers.deltas);
+        const buffers = self.buffers;
+        const offsets = self.offsets;
 
-        self.allocator.free(self.offsets.layers);
-        self.allocator.free(self.offsets.weights);
-        self.allocator.free(self.offsets.biases);
+        allocator.free(self.layer_sizes);
 
-        self.allocator.free(self.activations);
+        allocator.free(buffers.neurons);
+        allocator.free(buffers.weights);
+        allocator.free(buffers.biases);
+        allocator.free(buffers.deltas);
 
-        self.allocator.destroy(self);
+        allocator.free(offsets.layers);
+        allocator.free(offsets.weights);
+        allocator.free(offsets.biases);
+
+        allocator.free(self.activations);
     }
 
     pub fn clone(
@@ -166,48 +217,60 @@ pub const NeuralNetwork = struct {
             self.buffers.weights,
             source.buffers.weights,
         );
+
         @memcpy(
             self.buffers.biases,
             source.buffers.biases,
+        );
+
+        @memcpy(
+            self.activations,
+            source.activations,
         );
     }
 
     pub fn forward(self: *Self, input: []const NetType) void {
         std.debug.assert(input.len == self.layer_sizes[0]);
 
+        // Copy the input values into the first layer of neurons.
         @memcpy(
             self.buffers.neurons[0..input.len],
             input,
         );
 
-        const neurons = self.buffers.neurons;
-        const weights = self.buffers.weights;
-        const biases = self.buffers.biases;
-
         const connection_count = self.layer_sizes.len - 1;
         for (0..connection_count) |layer| {
+            const next_layer = layer + 1;
+
             const in_size = self.layer_sizes[layer];
-            const out_size = self.layer_sizes[layer + 1];
+            const out_size = self.layer_sizes[next_layer];
+            const weight_count = in_size * out_size;
+            const bias_count = out_size;
 
-            const input_base = self.offsets.layers[layer];
-            const output_base = self.offsets.layers[layer + 1];
+            const input_layer =
+                self.buffers.neurons[self.offsets.layers[layer] .. self.offsets.layers[layer] + in_size];
+            const output_layer =
+                self.buffers.neurons[self.offsets.layers[next_layer] .. self.offsets.layers[next_layer] + out_size];
+            const weight_layer =
+                self.buffers.weights[self.offsets.weights[layer] .. self.offsets.weights[layer] + weight_count];
+            const bias_layer =
+                self.buffers.biases[self.offsets.biases[layer] .. self.offsets.biases[layer] + bias_count];
 
-            var weight = self.offsets.weights[layer];
-            var bias = self.offsets.biases[layer];
+            const activation_forward = self.activations[next_layer].forward.?;
 
-            const activation_forward = self.activations[layer + 1].forward.?;
+            // Compute the next layer.
+            var weight_index: usize = 0;
 
             for (0..out_size) |out| {
-                var sum = biases[bias];
+                var sum = bias_layer[out];
 
-                var in: usize = 0;
-                while (in < in_size) : (in += 1) {
-                    sum += neurons[input_base + in] * weights[weight];
-                    weight += 1;
+                for (input_layer) |in| {
+                    const weight = weight_layer[weight_index];
+                    sum += in * weight;
+                    weight_index += 1;
                 }
 
-                neurons[output_base + out] = activation_forward(sum);
-                bias += 1;
+                output_layer[out] = activation_forward(sum);
             }
         }
     }
