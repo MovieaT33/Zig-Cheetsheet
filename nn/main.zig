@@ -58,13 +58,13 @@ pub fn main(init: std.process.Init) !void {
 
     std.debug.print(
         "output: {any} | loss: {}\n",
-        .{ output, network.calculateMse(&inputs, &targets, 2) },
+        .{ output, network.calculateMse(&inputs, &targets) },
     );
 
-    network.train(&inputs, &targets, 2, 10_000, 0.05);
+    network.train(&inputs, &targets, 100_000, 0.05);
 
     std.debug.print(
         "output: {any} | loss: {}\n",
-        .{ output, network.calculateMse(&inputs, &targets, 2) },
+        .{ output, network.calculateMse(&inputs, &targets) },
     );
 }
