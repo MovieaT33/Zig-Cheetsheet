@@ -89,6 +89,29 @@ pub const NeuralNetwork = struct {
         }
     }
 
+    pub fn mutateBuffers(
+        self: *Self,
+        mutation_rate: NetType,
+        mutation_strength: NetType,
+        rand: std.Random,
+    ) void {
+        const buffers = self.buffers;
+
+        mutateSlice(
+            buffers.weights,
+            mutation_rate,
+            mutation_strength,
+            rand,
+        );
+
+        mutateSlice(
+            buffers.biases,
+            mutation_rate,
+            mutation_strength,
+            rand,
+        );
+    }
+
     fn allocateOffsets(self: *Self) Allocator.Error!void {
         const layer_count = self.layer_sizes.len;
         const connection_count = layer_count - 1;

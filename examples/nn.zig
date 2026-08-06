@@ -152,41 +152,6 @@ const NeuralNetwork = struct {
     }
 };
 
-    // train
-    const inputs = [_][]const NetType{
-        &[_]NetType{ 0.0, 0.0 }, &[_]NetType{ 0.0, 0.5 }, &[_]NetType{ 0.0, 1.0 },
-        &[_]NetType{ 0.5, 0.0 }, &[_]NetType{ 0.5, 0.5 }, &[_]NetType{ 0.5, 1.0 },
-        &[_]NetType{ 1.0, 0.0 }, &[_]NetType{ 1.0, 0.5 }, &[_]NetType{ 1.0, 1.0 },
-    };
-    const targets = [_][]const NetType{
-        &[_]NetType{0.1}, &[_]NetType{0.2}, &[_]NetType{0.3},
-        &[_]NetType{0.4}, &[_]NetType{0.5}, &[_]NetType{0.6},
-        &[_]NetType{0.7}, &[_]NetType{0.8}, &[_]NetType{0.9},
-    };
-
-    try nn.evolve(
-        &inputs,
-        &targets,
-        .{
-            .population_size = 50,
-            .generations = 1_000_000,
-            .mutation_rate = 0.1,
-            .mutation_strength = 0.05,
-        },
-        rand,
-    );
-
-    // print results
-    std.debug.print("\nresults:\n", .{});
-    for (inputs, targets) |input, target| {
-        const outputs = nn.forward(input);
-
-        std.debug.print(
-            "[{d:.1}, {d:.1}] > [{d:.20}] < [\x1b[38;2;241;250;140m{d:.1}\x1b[0m]\n",
-            .{ input[0], input[1], outputs[0], target[0] },
-        );
-    }
-
     const final_loss = nn.lossMseDataset(&inputs, &targets);
     var zeros: usize = 0;
     if (final_loss > 0) {

@@ -55,4 +55,10 @@ pub fn main(init: std.process.Init) !void {
         &.{2},
         1,
     ) });
+    network.mutateBuffers(1, 1, rand);
+    std.debug.print("output: {any} | loss: {}\n", .{ output, network.calculateMse(
+        &.{ 1, 2 },
+        &.{2},
+        1,
+    ) });
 }
