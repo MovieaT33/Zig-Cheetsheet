@@ -60,7 +60,16 @@ pub fn main(init: std.process.Init) !void {
         .{ output, network.calculateMse(&inputs, &targets) },
     );
 
+    std.debug.print("train:\n", .{});
     network.train(&inputs, &targets, 10_000_000, 0.05);
+    std.debug.print("evolve\n", .{});
+    try network.evolve(&inputs, &targets, .{
+        .population_size = 100,
+        .elite_count = 10,
+        .generations = 5_000,
+        .mutation_rate = 0.05,
+        .mutation_strength = 0.05,
+    }, rand);
 
     std.debug.print(
         "\noutput: {any} | loss: {}\n",

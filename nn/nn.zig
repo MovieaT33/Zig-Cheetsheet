@@ -37,6 +37,11 @@ pub const NeuralNetwork = struct {
         mutation_strength: NetType,
     };
 
+    const Candidate = struct {
+        network: *Self,
+        loss: NetType,
+    };
+
     layer_sizes: []usize,
 
     buffers: Buffers,
@@ -256,7 +261,7 @@ pub const NeuralNetwork = struct {
         self: *const Self,
         rand: std.Random,
     ) Allocator.Error!*Self {
-        return try .create(
+        return try .init(
             self.layer_sizes,
             self.activations,
             self.allocator,
@@ -544,6 +549,122 @@ pub const NeuralNetwork = struct {
 
                 self.forward(input);
                 self.backpropagate(target, learning_rate);
+            }
+        }
+    }
+
+    pub fn evolve(
+        self: *Self,
+        inputs: []const NetType,
+        targets: []const NetType,
+        config: EvolutionConfig,
+        rand: std.Random,
+    ) !void {
+        std.debug.assert(config.population_size > 0);
+        std.debug.assert(config.elite_count > 0);
+        std.debug.assert(config.elite_count <= config.population_size);
+
+        const input_size = self.layer_sizes[0];
+        std.debug.assert(inputs.len % input_size == 0);
+
+        const sample_count = inputs.len / input_size;
+        std.debug.assert(sample_count > 0);
+
+        const output_layer = self.layer_sizes.len - 1;
+        const output_size = self.layer_sizes[output_layer];
+        std.debug.assert(targets.len == output_size * sample_count);
+
+        var population = try self.allocator.alloc(
+            *Self,
+            config.population_size,
+        );
+        defer {
+            for (population) |network|
+                network.deinit();
+
+            self.allocator.free(population);
+        }
+
+        var candidates = try self.allocator.alloc(
+            Candidate,
+            config.population_size,
+        );
+        defer self.allocator.free(candidates);
+
+        for (population) |*network| {
+            network.* = try self.clone(rand);
+            network.*.copyParameters(self);
+        }
+
+        const progress_step =
+            @max(@as(usize, 1), config.generations / 1_000);
+
+        for (0..config.generations) |generation| {
+            // Mutate every network except the original.
+            for (population[1..]) |network| {
+                network.mutateBuffers(
+                    config.mutation_rate,
+                    config.mutation_strength,
+                    rand,
+                );
+            }
+
+            // Evaluate population.
+            for (population, 0..) |network, i| {
+                candidates[i] = .{
+                    .network = network,
+                    .loss = network.calculateMse(inputs, targets),
+                };
+            }
+
+            std.mem.sort(
+                Candidate,
+                candidates,
+                {},
+                struct {
+                    fn lessThan(
+                        _: void,
+                        left: Candidate,
+                        right: Candidate,
+                    ) bool {
+                        return left.loss < right.loss;
+                    }
+                }.lessThan,
+            );
+
+            const best = candidates[0];
+
+            self.copyParameters(best.network);
+
+            const is_last_generation =
+                generation + 1 == config.generations;
+
+            if (generation % progress_step == 0 or is_last_generation) {
+                const progress =
+                    @as(NetType, @floatFromInt(generation + 1)) /
+                    @as(NetType, @floatFromInt(config.generations)) *
+                    100;
+
+                std.debug.print(
+                    "[evolve] \x1b[32m{d:.1}%\x1b[0m | generation {}/{} | mse loss: {d:.20}\r",
+                    .{
+                        progress,
+                        generation + 1,
+                        config.generations,
+                        best.loss,
+                    },
+                );
+            }
+
+            if (best.loss == 0)
+                break;
+
+            // Copy elites into the next generation.
+            for (population, 0..) |network, i| {
+                const parent =
+                    candidates[i % config.elite_count].network;
+
+                network.copyParameters(parent);
             }
         }
     }
